@@ -17,6 +17,13 @@ type screen struct {
 	output    chan string
 }
 
+type Screen interface {
+	AddLine(line string)
+	SetLines(lines []string)
+	Run(ctx context.Context)
+	SetLine(i int, line string)
+}
+
 func NewScreen(writer io.Writer, out chan string) *screen {
 	return &screen{
 		writer:    writer,
@@ -35,6 +42,20 @@ func (s *screen) AddLine(line string) {
 
 func (s *screen) SetLines(lines []string) {
 	s.linesChan <- lines
+}
+
+func (s *screen) SetLine(lineNum int, line string) {
+	if lineNum >= len(s.lines) {
+		i := 0
+		for i < lineNum {
+			s.AddLine("")
+			i++
+		}
+		s.AddLine(line)
+	} else {
+		s.lines[lineNum] = line
+		s.linesChan <- s.lines
+	}
 }
 
 func (s *screen) Run(ctx context.Context) {
