@@ -1,0 +1,7 @@
+cat
+dog
+apple
+apple
+apple
+fish
+fish

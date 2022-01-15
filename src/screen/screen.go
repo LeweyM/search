@@ -12,19 +12,26 @@ type screen struct {
 	writer    io.Writer
 	lines     []string
 	input     string
-	inputChan chan string
+	InputChan chan string
 	linesChan chan []string
+	output    chan string
 }
 
-func NewScreen(writer io.Writer) *screen {
+func NewScreen(writer io.Writer, out chan string) *screen {
 	return &screen{
 		writer:    writer,
 		lines:     []string{},
 		input:     "",
-		inputChan: make(chan string),
+		InputChan: make(chan string),
 		linesChan: make(chan []string),
+		output:    out,
 	}
 }
+
+func (s *screen) AddLine(line string) {
+	s.linesChan <- append(s.lines, line)
+}
+
 
 func (s *screen) SetLines(lines []string) {
 	s.linesChan <- lines
@@ -46,13 +53,16 @@ func (s *screen) run(ctx context.Context) {
 	}()
 
 	go func() {
-		for input := range s.inputChan {
+		for input := range s.InputChan {
 			s.input = input
+			s.output <- s.input
 			if s.refresh(ctx) {
 				return
 			}
 		}
 	}()
+
+	s.InputChan <- "" // start screen
 }
 
 func (s *screen) refresh(ctx context.Context) bool {
@@ -94,17 +104,17 @@ func (s *screen) readInput(ctx context.Context, in *bufio.Reader) {
 			// backspace
 			if r == 127 {
 				if len(s.input) > 0 {
-					s.inputChan <- s.input[0 : len(s.input)-1]
+					s.InputChan <- s.input[0 : len(s.input)-1]
 				}
 				continue
 			}
 			// enter
 			if r == 13 {
-				s.inputChan <- ""
+				s.InputChan <- ""
 				continue
 			}
 			if string(r) != "" {
-				s.inputChan <- s.input + string(r)
+				s.InputChan <- s.input + string(r)
 				continue
 			}
 		}
