@@ -6,14 +6,14 @@ import (
 	"fmt"
 	"io"
 	"os"
-	"time"
 )
 
 type screen struct {
-	writer io.Writer
-	lines  []string
-	input  string
+	writer    io.Writer
+	lines     []string
+	input     string
 	inputChan chan string
+	linesChan chan []string
 }
 
 func NewScreen(writer io.Writer) *screen {
@@ -22,11 +22,12 @@ func NewScreen(writer io.Writer) *screen {
 		lines:     []string{},
 		input:     "",
 		inputChan: make(chan string),
+		linesChan: make(chan []string),
 	}
 }
 
 func (s *screen) SetLines(lines []string) {
-	s.lines = lines
+	s.linesChan <- lines
 }
 
 func (s *screen) Run(ctx context.Context) {
@@ -35,17 +36,35 @@ func (s *screen) Run(ctx context.Context) {
 }
 
 func (s *screen) run(ctx context.Context) {
-	for s.inputChan {
-		select {
-		case <-ctx.Done():
-			return
-		default:
-			s.setCursorPosition(0, 0)
-			s.clearScreen()
-			s.printScreen()
-			time.Sleep(time.Millisecond * 50)
+	go func() {
+		for lines := range s.linesChan {
+			s.lines = lines
+			if s.refresh(ctx) {
+				return
+			}
 		}
+	}()
+
+	go func() {
+		for input := range s.inputChan {
+			s.input = input
+			if s.refresh(ctx) {
+				return
+			}
+		}
+	}()
+}
+
+func (s *screen) refresh(ctx context.Context) bool {
+	select {
+	case <-ctx.Done():
+		return true
+	default:
+		s.setCursorPosition(0, 0)
+		s.clearScreen()
+		s.printScreen()
 	}
+	return false
 }
 
 func (s *screen) printScreen() {
@@ -75,17 +94,17 @@ func (s *screen) readInput(ctx context.Context, in *bufio.Reader) {
 			// backspace
 			if r == 127 {
 				if len(s.input) > 0 {
-					s.input = s.input[0 : len(s.input)-1]
+					s.inputChan <- s.input[0 : len(s.input)-1]
 				}
 				continue
 			}
 			// enter
 			if r == 13 {
-				s.input = ""
+				s.inputChan <- ""
 				continue
 			}
 			if string(r) != "" {
-				s.input += string(r)
+				s.inputChan <- s.input + string(r)
 				continue
 			}
 		}
