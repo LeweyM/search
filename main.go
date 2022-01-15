@@ -14,11 +14,10 @@ func main() {
 	fmt.Print("\033[?25l") // hide cursor
 	terminal.MakeRaw(0) // fd 0 is stdin
 
-	screen := screen.NewScreen(os.Stdout, []string{"bobo", "foo"})
+	screen := screen.NewScreen(os.Stdout)
 	ctx := context.Background()
-	//ctx, _ = context.WithTimeout(ctx, 5 * time.Second)
 
-	go screen.Run(ctx)
+	screen.Run(ctx)
 
 	count := 0
 	for {

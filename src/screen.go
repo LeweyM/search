@@ -11,12 +11,18 @@ import (
 
 type screen struct {
 	writer io.Writer
-	lines []string
-	input string
+	lines  []string
+	input  string
+	inputChan chan string
 }
 
-func NewScreen(writer io.Writer, lines []string) *screen {
-	return &screen{writer: writer, lines: lines}
+func NewScreen(writer io.Writer) *screen {
+	return &screen{
+		writer:    writer,
+		lines:     []string{},
+		input:     "",
+		inputChan: make(chan string),
+	}
 }
 
 func (s *screen) SetLines(lines []string) {
@@ -24,9 +30,41 @@ func (s *screen) SetLines(lines []string) {
 }
 
 func (s *screen) Run(ctx context.Context) {
-	in := bufio.NewReader(os.Stdin)
-	go func() {
-		for {
+	go s.readInput(ctx, bufio.NewReader(os.Stdin))
+	go s.run(ctx)
+}
+
+func (s *screen) run(ctx context.Context) {
+	for s.inputChan {
+		select {
+		case <-ctx.Done():
+			return
+		default:
+			s.setCursorPosition(0, 0)
+			s.clearScreen()
+			s.printScreen()
+			time.Sleep(time.Millisecond * 50)
+		}
+	}
+}
+
+func (s *screen) printScreen() {
+	fmt.Fprint(s.writer, "screen: ")
+	fmt.Fprint(s.writer, "\r\n")
+	fmt.Fprint(s.writer, s.input)
+	fmt.Fprint(s.writer, "\r\n")
+
+	for _, line := range s.lines {
+		fmt.Fprintf(s.writer, "\r\n%s", line)
+	}
+}
+
+func (s *screen) readInput(ctx context.Context, in *bufio.Reader) {
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		default:
 			r, _, err := in.ReadRune()
 			if err != nil {
 				panic(err)
@@ -37,7 +75,7 @@ func (s *screen) Run(ctx context.Context) {
 			// backspace
 			if r == 127 {
 				if len(s.input) > 0 {
-					s.input = s.input[0:len(s.input)-1]
+					s.input = s.input[0 : len(s.input)-1]
 				}
 				continue
 			}
@@ -51,26 +89,6 @@ func (s *screen) Run(ctx context.Context) {
 				continue
 			}
 		}
-	}()
-
-	for {
-		select {
-		case <-ctx.Done():
-			return
-		default:
-			s.setCursorPosition(0, 0)
-			s.clearScreen()
-			fmt.Fprint(s.writer, "screen: ")
-			fmt.Fprint(s.writer, "\r\n")
-			fmt.Fprint(s.writer, s.input)
-			fmt.Fprint(s.writer, "\r\n")
-
-			for _, line := range s.lines {
-				fmt.Fprintf(s.writer, "\r\n%s", line)
-			}
-
-			time.Sleep(time.Millisecond * 50)
-		}
 	}
 }
 
@@ -80,16 +98,4 @@ func (s *screen) setCursorPosition(y, x int) {
 
 func (s *screen) clearScreen() {
 	fmt.Fprintf(s.writer, "\033[H\033[2J")
-}
-
-func (s *screen) readInput(in *bufio.Reader) (error, rune) {
-	r, _, err := in.ReadRune()
-	if err != nil {
-		return err, 'a'
-	}
-	if r == 'q' {
-		return fmt.Errorf("user exit program"), 'a'
-	}
-
-	return nil, r
 }
