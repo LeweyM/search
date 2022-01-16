@@ -16,6 +16,7 @@ type Result struct {
 	LineNumber  int
 	LineContent string
 	Count       int
+	Query       string
 }
 
 func NewSearch(filePath string) *search {
@@ -82,7 +83,9 @@ func (s *search) Search(ctx context.Context, target string, out chan Result) {
 				line++
 			}
 			if i+len(target) < len(s.content) && string(s.content[i:i+len(target)]) == target {
+				//time.Sleep(100 * time.Millisecond)
 				out <- Result{
+					Query: target,
 					Count: count,
 					LineNumber:  line,
 					LineContent: s.lines[line],
@@ -92,5 +95,6 @@ func (s *search) Search(ctx context.Context, target string, out chan Result) {
 			i++
 		}
 	}
+	//close(out)
 }
 

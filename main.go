@@ -22,10 +22,11 @@ func main() {
 
 	list(ctx, input, sc)
 	//count(ctx, input, sc)
+}
 
-	// loop forever
-	for {}
-
+type displayState struct {
+	ready    bool
+	lines    []string
 }
 
 func list(ctx context.Context, input chan string, sc screen.Screen) {
@@ -33,54 +34,46 @@ func list(ctx context.Context, input chan string, sc screen.Screen) {
 	se.LoadInMemory()
 	se.LoadLinesInMemory()
 
-	results := make(chan search.Result, 10)
-	waiting := make(chan bool, 10)
-	reset := make(chan bool, 10)
+	currentQuery := ""
 
-	// run new search on each valid input
+	state := displayState{}
+	show := func(dState displayState) {
+		if !dState.ready {
+			sc.SetLines([]string{"Enter 3 letters or more to search."})
+			return
+		}
+		if len(dState.lines) > 10 {
+			sc.SetLines(append(dState.lines[:10], fmt.Sprintf("... %d more results not shown", len(dState.lines) - 10)))
+		} else {
+			sc.SetLines(dState.lines)
+		}
+	}
+	show(state)
+
+	results := make(chan search.Result)
 	cancel, cancelFunc := context.WithCancel(ctx)
-	go func() {
-		for t := range input {
-			cancelFunc()
-			reset <- true
-			cancel, cancelFunc = context.WithCancel(ctx)
 
-			if len(t) >= 5 {
+	for {
+		select {
+		case t := <-input:
+			state.lines = []string{}
+			cancelFunc()
+			cancel, cancelFunc = context.WithCancel(ctx)
+			if len(t) >= 3 {
+				state.ready = true
+				currentQuery = t
 				go se.Search(cancel, t, results)
 			} else {
-				waiting <- true
+				state.ready = false
+			}
+			show(state)
+		case r := <-results:
+			if r.Query == currentQuery {
+				state.lines = append(state.lines, fmt.Sprintf("%d: line-%s: \"%s\"", len(state.lines), strconv.Itoa(r.LineNumber), r.LineContent))
+				show(state)
 			}
 		}
-		defer cancelFunc()
-	}()
-
-	// update count on each result
-	count := 0
-	go func() {
-		for r := range results {
-			if count < 10 {
-				sc.AddLine(fmt.Sprintf("%d: line-%s: \"%s\"", r.Count, strconv.Itoa(r.LineNumber), r.LineContent))
-			} else {
-				sc.SetLine(10, fmt.Sprintf("... %d more results not shown", count-10))
-			}
-			count++
-		}
-	}()
-
-	// set to waiting
-	go func() {
-		for range waiting {
-			count = 0
-			sc.SetLines([]string{"Search for 5 more letters"})
-		}
-	}()
-
-	go func() {
-		for range reset {
-			count = 0
-			sc.SetLines([]string{})
-		}
-	}()
+	}
 }
 
 func count(ctx context.Context, input chan string, sc screen.Screen) {

@@ -6,15 +6,24 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"sync"
 )
 
 type screen struct {
-	writer    io.Writer
-	lines     []string
-	input     string
-	InputChan chan string
-	linesChan chan []string
-	output    chan string
+	writer         io.Writer
+	lines          []string
+	input          string
+	InputChan      chan string
+	linesChan      chan []string
+	output         chan string
+	m              sync.Mutex
+	appendLineChan chan string
+	modifyLineChan chan modification
+}
+
+type modification struct {
+	n    int
+	line string
 }
 
 type Screen interface {
@@ -26,64 +35,78 @@ type Screen interface {
 
 func NewScreen(writer io.Writer, out chan string) *screen {
 	return &screen{
-		writer:    writer,
-		lines:     []string{},
-		input:     "",
-		InputChan: make(chan string),
-		linesChan: make(chan []string),
-		output:    out,
+		writer:         writer,
+		lines:          []string{},
+		input:          "",
+		InputChan:      make(chan string),
+		modifyLineChan: make(chan modification),
+		appendLineChan: make(chan string, 100),
+		linesChan:      make(chan []string),
+		output:         out,
+		m:              sync.Mutex{},
 	}
 }
 
 func (s *screen) AddLine(line string) {
-	s.linesChan <- append(s.lines, line)
+	s.appendLineChan <- line
 }
-
 
 func (s *screen) SetLines(lines []string) {
 	s.linesChan <- lines
 }
 
 func (s *screen) SetLine(lineNum int, line string) {
-	if lineNum >= len(s.lines) {
-		i := 0
-		for i < lineNum {
-			s.AddLine("")
-			i++
-		}
-		s.AddLine(line)
-	} else {
-		s.lines[lineNum] = line
-		s.linesChan <- s.lines
-	}
+	s.modifyLineChan <- modification{n: lineNum, line: line}
 }
 
 func (s *screen) Run(ctx context.Context) {
 	go s.readInput(ctx, bufio.NewReader(os.Stdin))
-	go s.run(ctx)
+	go s.updateStateAndScreen(ctx)
 }
 
-func (s *screen) run(ctx context.Context) {
-	go func() {
-		for lines := range s.linesChan {
-			s.lines = lines
+func (s *screen) updateStateAndScreen(ctx context.Context) {
+	for {
+		select {
+		case lineMod := <-s.modifyLineChan:
+			s.m.Lock()
+			if lineMod.n >= len(s.lines) {
+				i := len(s.lines)
+				for i < lineMod.n {
+					s.lines = append(s.lines, "")
+					i++
+				}
+				s.lines = append(s.lines, lineMod.line)
+			} else {
+				s.lines[lineMod.n] = lineMod.line
+			}
+			s.m.Unlock()
 			if s.refresh(ctx) {
 				return
 			}
-		}
-	}()
-
-	go func() {
-		for input := range s.InputChan {
+		case line := <-s.appendLineChan:
+			s.m.Lock()
+			s.lines = append(s.lines, line)
+			s.m.Unlock()
+			if s.refresh(ctx) {
+				return
+			}
+		case lines := <-s.linesChan:
+			s.m.Lock()
+			s.lines = lines
+			s.m.Unlock()
+			if s.refresh(ctx) {
+				return
+			}
+		case input := <-s.InputChan:
+			s.m.Lock()
 			s.input = input
+			s.m.Unlock()
 			s.output <- s.input
 			if s.refresh(ctx) {
 				return
 			}
 		}
-	}()
-
-	s.InputChan <- "" // start screen
+	}
 }
 
 func (s *screen) refresh(ctx context.Context) bool {
