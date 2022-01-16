@@ -7,7 +7,29 @@ import (
 	"io"
 	"os"
 	"sync"
+	"time"
 )
+
+type state struct {
+	lines []string
+	input string
+}
+
+func (s state) Equals(other state) bool {
+	return s.input == other.input && s.linesAreEqual(other)
+}
+
+func (a state) linesAreEqual(b state) bool {
+	if len(a.lines) != len(b.lines) {
+		return false
+	}
+	for i, v := range a.lines {
+		if v != b.lines[i] {
+			return false
+		}
+	}
+	return true
+}
 
 type screen struct {
 	writer         io.Writer
@@ -17,20 +39,11 @@ type screen struct {
 	linesChan      chan []string
 	output         chan string
 	m              sync.Mutex
-	appendLineChan chan string
-	modifyLineChan chan modification
-}
-
-type modification struct {
-	n    int
-	line string
 }
 
 type Screen interface {
-	AddLine(line string)
 	SetLines(lines []string)
 	Run(ctx context.Context)
-	SetLine(i int, line string)
 }
 
 func NewScreen(writer io.Writer, out chan string) *screen {
@@ -39,72 +52,47 @@ func NewScreen(writer io.Writer, out chan string) *screen {
 		lines:          []string{},
 		input:          "",
 		InputChan:      make(chan string),
-		modifyLineChan: make(chan modification),
-		appendLineChan: make(chan string, 100),
 		linesChan:      make(chan []string),
 		output:         out,
 		m:              sync.Mutex{},
 	}
 }
 
-func (s *screen) AddLine(line string) {
-	s.appendLineChan <- line
-}
-
 func (s *screen) SetLines(lines []string) {
 	s.linesChan <- lines
-}
-
-func (s *screen) SetLine(lineNum int, line string) {
-	s.modifyLineChan <- modification{n: lineNum, line: line}
 }
 
 func (s *screen) Run(ctx context.Context) {
 	go s.readInput(ctx, bufio.NewReader(os.Stdin))
 	go s.updateStateAndScreen(ctx)
+	ticker := time.NewTicker(50 * time.Millisecond)
+	var oldState state
+	go func() {
+		for range ticker.C {
+			nextState := state{
+				lines: s.lines,
+				input: s.input,
+			}
+			if !nextState.Equals(oldState) {
+				s.refresh(ctx)
+			}
+			oldState = nextState
+		}
+	}()
 }
 
 func (s *screen) updateStateAndScreen(ctx context.Context) {
 	for {
 		select {
-		case lineMod := <-s.modifyLineChan:
-			s.m.Lock()
-			if lineMod.n >= len(s.lines) {
-				i := len(s.lines)
-				for i < lineMod.n {
-					s.lines = append(s.lines, "")
-					i++
-				}
-				s.lines = append(s.lines, lineMod.line)
-			} else {
-				s.lines[lineMod.n] = lineMod.line
-			}
-			s.m.Unlock()
-			if s.refresh(ctx) {
-				return
-			}
-		case line := <-s.appendLineChan:
-			s.m.Lock()
-			s.lines = append(s.lines, line)
-			s.m.Unlock()
-			if s.refresh(ctx) {
-				return
-			}
 		case lines := <-s.linesChan:
 			s.m.Lock()
 			s.lines = lines
 			s.m.Unlock()
-			if s.refresh(ctx) {
-				return
-			}
 		case input := <-s.InputChan:
 			s.m.Lock()
 			s.input = input
 			s.m.Unlock()
 			s.output <- s.input
-			if s.refresh(ctx) {
-				return
-			}
 		}
 	}
 }
