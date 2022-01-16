@@ -64,10 +64,13 @@ func (s *screen) SetLines(lines []string) {
 
 func (s *screen) Run(ctx context.Context) {
 	go s.readInput(ctx, bufio.NewReader(os.Stdin))
-	go s.updateStateAndScreen(ctx)
-	ticker := time.NewTicker(50 * time.Millisecond)
-	var oldState state
-	go func() {
+	go s.updateState(ctx)
+	go s.updateScreen(ctx, time.NewTicker(50*time.Millisecond))
+}
+
+func (s *screen) updateScreen(ctx context.Context, ticker *time.Ticker) {
+	func() {
+		var oldState state
 		for range ticker.C {
 			nextState := state{
 				lines: s.lines,
@@ -81,9 +84,11 @@ func (s *screen) Run(ctx context.Context) {
 	}()
 }
 
-func (s *screen) updateStateAndScreen(ctx context.Context) {
+func (s *screen) updateState(ctx context.Context) {
 	for {
 		select {
+		case <-ctx.Done():
+			return
 		case lines := <-s.linesChan:
 			s.m.Lock()
 			s.lines = lines
