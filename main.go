@@ -3,7 +3,6 @@ package main
 import (
 	"context"
 	"fmt"
-	"golang.org/x/crypto/ssh/terminal"
 	"os"
 	screen "search/src/screen"
 	"search/src/search"
@@ -11,9 +10,6 @@ import (
 )
 
 func main() {
-	fmt.Print("\033[?25l") // hide cursor
-	terminal.MakeRaw(0)    // fd 0 is stdin
-
 	input := make(chan string)
 	sc := screen.NewScreen(os.Stdout, input)
 	ctx := context.Background()
@@ -25,12 +21,14 @@ func main() {
 }
 
 type displayState struct {
-	ready    bool
-	lines    []string
+	ready  bool
+	lines  []string
+	done   bool
+	target string
 }
 
 func list(ctx context.Context, input chan string, sc screen.Screen) {
-	se := search.NewSearch("./dict.txt")
+	se := search.NewSearch("./bible.txt")
 	se.LoadInMemory()
 	se.LoadLinesInMemory()
 
@@ -42,10 +40,26 @@ func list(ctx context.Context, input chan string, sc screen.Screen) {
 			sc.SetLines([]string{"Enter 3 letters or more to search."})
 			return
 		}
+
+		for i, line := range dState.lines {
+			if len(line) > 50 {
+				dState.lines[i] = dState.lines[i][:50] + "..."
+			}
+		}
+
 		if len(dState.lines) > 10 {
-			sc.SetLines(append(dState.lines[:10], fmt.Sprintf("... %d more results not shown", len(dState.lines) - 10)))
+			display := append(dState.lines[:10], fmt.Sprintf("... %d more results not shown for query \"%s\"", len(dState.lines)-10, dState.target))
+			if dState.done {
+				sc.SetLines(append(display, fmt.Sprintf("Search finished. %d matching entries found.", len(dState.lines))))
+			} else {
+				sc.SetLines(append(display, "... Searching"))
+			}
 		} else {
-			sc.SetLines(dState.lines)
+			if dState.done {
+				sc.SetLines(append(dState.lines, fmt.Sprintf("Search finished. %d matching entries found.", len(dState.lines))))
+			} else {
+				sc.SetLines(append(dState.lines, "... Searching"))
+			}
 		}
 	}
 	show(state)
@@ -56,11 +70,12 @@ func list(ctx context.Context, input chan string, sc screen.Screen) {
 	for {
 		select {
 		case t := <-input:
-			state.lines = []string{}
+			state = displayState{}
 			cancelFunc()
 			cancel, cancelFunc = context.WithCancel(ctx)
 			if len(t) >= 3 {
 				state.ready = true
+				state.target = t
 				currentQuery = t
 				go se.Search(cancel, t, results)
 			} else {
@@ -69,7 +84,11 @@ func list(ctx context.Context, input chan string, sc screen.Screen) {
 			show(state)
 		case r := <-results:
 			if r.Query == currentQuery {
-				state.lines = append(state.lines, fmt.Sprintf("%d: line-%s: \"%s\"", len(state.lines), strconv.Itoa(r.LineNumber), r.LineContent))
+				if r.Finished {
+					state.done = true
+				} else {
+					state.lines = append(state.lines, fmt.Sprintf("%d: line-%s: \"%s\"", len(state.lines), strconv.Itoa(r.LineNumber), r.LineContent))
+				}
 				show(state)
 			}
 		}

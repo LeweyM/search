@@ -17,6 +17,7 @@ type Result struct {
 	LineContent string
 	Count       int
 	Query       string
+	Finished    bool
 }
 
 func NewSearch(filePath string) *search {
@@ -46,9 +47,9 @@ func (s *search) LoadLinesInMemory() {
 			sb.WriteByte(ch)
 		}
 	}
+	s.lines = append(s.lines, sb.String())
 	return
 }
-
 
 func (s *search) Count(ctx context.Context, target string, out chan int) {
 	count := 0
@@ -82,12 +83,13 @@ func (s *search) Search(ctx context.Context, target string, out chan Result) {
 			if ch == '\n' {
 				line++
 			}
-			if i+len(target) < len(s.content) && string(s.content[i:i+len(target)]) == target {
-				//time.Sleep(100 * time.Millisecond)
+			if i+len(target) <= len(s.content) && string(s.content[i:i+len(target)]) == target {
+				//time.Sleep(time.Duration(rand.Intn(50)) * time.Millisecond)
 				out <- Result{
+					Finished: false,
 					Query: target,
 					Count: count,
-					LineNumber:  line,
+					LineNumber:  line+1,
 					LineContent: s.lines[line],
 				}
 				count++
@@ -95,6 +97,9 @@ func (s *search) Search(ctx context.Context, target string, out chan Result) {
 			i++
 		}
 	}
-	//close(out)
+	out <- Result{
+		Finished: true,
+		Query: target,
+	}
 }
 

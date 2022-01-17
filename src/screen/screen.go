@@ -4,9 +4,9 @@ import (
 	"bufio"
 	"context"
 	"fmt"
+	"golang.org/x/crypto/ssh/terminal"
 	"io"
 	"os"
-	"sync"
 	"time"
 )
 
@@ -15,16 +15,16 @@ type state struct {
 	input string
 }
 
-func (s state) Equals(other state) bool {
-	return s.input == other.input && s.linesAreEqual(other)
+func (a state) Equals(other state) bool {
+	return a.input == other.input && a.linesAreEqual(other)
 }
 
-func (a state) linesAreEqual(b state) bool {
-	if len(a.lines) != len(b.lines) {
+func (a state) linesAreEqual(other state) bool {
+	if len(a.lines) != len(other.lines) {
 		return false
 	}
 	for i, v := range a.lines {
-		if v != b.lines[i] {
+		if v != other.lines[i] {
 			return false
 		}
 	}
@@ -33,12 +33,9 @@ func (a state) linesAreEqual(b state) bool {
 
 type screen struct {
 	writer         io.Writer
-	lines          []string
-	input          string
-	InputChan      chan string
+	InputChan      chan rune
 	linesChan      chan []string
 	output         chan string
-	m              sync.Mutex
 }
 
 type Screen interface {
@@ -49,12 +46,9 @@ type Screen interface {
 func NewScreen(writer io.Writer, out chan string) *screen {
 	return &screen{
 		writer:         writer,
-		lines:          []string{},
-		input:          "",
-		InputChan:      make(chan string),
+		InputChan:      make(chan rune),
 		linesChan:      make(chan []string),
 		output:         out,
-		m:              sync.Mutex{},
 	}
 }
 
@@ -63,66 +57,11 @@ func (s *screen) SetLines(lines []string) {
 }
 
 func (s *screen) Run(ctx context.Context) {
+	fmt.Print("\033[?25l") // hide cursor
+	terminal.MakeRaw(0)    // fd 0 is stdin
+
 	go s.readInput(ctx, bufio.NewReader(os.Stdin))
-	go s.updateState(ctx)
-	go s.updateScreen(ctx, time.NewTicker(50*time.Millisecond))
-}
-
-func (s *screen) updateScreen(ctx context.Context, ticker *time.Ticker) {
-	func() {
-		var oldState state
-		for range ticker.C {
-			nextState := state{
-				lines: s.lines,
-				input: s.input,
-			}
-			if !nextState.Equals(oldState) {
-				s.refresh(ctx)
-			}
-			oldState = nextState
-		}
-	}()
-}
-
-func (s *screen) updateState(ctx context.Context) {
-	for {
-		select {
-		case <-ctx.Done():
-			return
-		case lines := <-s.linesChan:
-			s.m.Lock()
-			s.lines = lines
-			s.m.Unlock()
-		case input := <-s.InputChan:
-			s.m.Lock()
-			s.input = input
-			s.m.Unlock()
-			s.output <- s.input
-		}
-	}
-}
-
-func (s *screen) refresh(ctx context.Context) bool {
-	select {
-	case <-ctx.Done():
-		return true
-	default:
-		s.setCursorPosition(0, 0)
-		s.clearScreen()
-		s.printScreen()
-	}
-	return false
-}
-
-func (s *screen) printScreen() {
-	fmt.Fprint(s.writer, "screen: ")
-	fmt.Fprint(s.writer, "\r\n")
-	fmt.Fprint(s.writer, s.input)
-	fmt.Fprint(s.writer, "\r\n")
-
-	for _, line := range s.lines {
-		fmt.Fprintf(s.writer, "\r\n%s", line)
-	}
+	go s.update(ctx, time.NewTicker(100*time.Millisecond))
 }
 
 func (s *screen) readInput(ctx context.Context, in *bufio.Reader) {
@@ -135,26 +74,77 @@ func (s *screen) readInput(ctx context.Context, in *bufio.Reader) {
 			if err != nil {
 				panic(err)
 			}
-			if r == 'q' {
-				panic(fmt.Errorf("user exit program"))
+			// exit program on key "Q"
+			if r == 'Q' {
+				os.Exit(0)
 			}
-			// backspace
+			s.InputChan <- r
+		}
+	}
+}
+
+func (s *screen) update(ctx context.Context, ticker *time.Ticker) {
+	var linesL []string
+	var inputL string
+	hasChanged := true
+
+	for {
+		select {
+		case <-ctx.Done():
+			ticker.Stop()
+			return
+		case r := <-s.InputChan:
 			if r == 127 {
-				if len(s.input) > 0 {
-					s.InputChan <- s.input[0 : len(s.input)-1]
+				if len(inputL) > 0 {
+					inputL = inputL[0 : len(inputL)-1]
+					s.output <- inputL
 				}
 				continue
 			}
 			// enter
 			if r == 13 {
-				s.InputChan <- ""
+				inputL = ""
+				s.output <- inputL
 				continue
 			}
-			if string(r) != "" {
-				s.InputChan <- s.input + string(r)
-				continue
+			inputL = inputL + string(r)
+			hasChanged = false
+			s.output <- inputL
+		case <-ticker.C:
+			if hasChanged {
+				s.refresh(ctx, state{
+					lines: linesL,
+					input: inputL,
+				})
 			}
+			hasChanged = false
+		case lines := <-s.linesChan:
+			linesL = lines
+			hasChanged = true
 		}
+	}
+}
+
+func (s *screen) refresh(ctx context.Context, st state) bool {
+	select {
+	case <-ctx.Done():
+		return true
+	default:
+		s.setCursorPosition(0, 0)
+		s.clearScreen()
+		s.printScreen(st)
+	}
+	return false
+}
+
+func (s *screen) printScreen(st state) {
+	fmt.Fprint(s.writer, "screen: ")
+	fmt.Fprint(s.writer, "\r\n")
+	fmt.Fprint(s.writer, st.input)
+	fmt.Fprint(s.writer, "\r\n")
+
+	for _, line := range st.lines {
+		fmt.Fprintf(s.writer, "\r\n%s", line)
 	}
 }
 
