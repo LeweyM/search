@@ -4,10 +4,7 @@ type matchesLetter struct {
 	base      finiteState
 	letter    rune
 	nextState finiteState
-}
-
-func newMatchesLetter(base finiteState, letter rune, nextState finiteState) *matchesLetter {
-	return &matchesLetter{base: base, letter: letter, nextState: nextState}
+	endState  bool
 }
 
 func (m matchesLetter) test(r rune) finiteState {
@@ -19,5 +16,23 @@ func (m matchesLetter) test(r rune) finiteState {
 }
 
 func (m matchesLetter) isEndState() bool {
-	return false
+	return m.endState
+}
+
+func (m matchesLetter) End() matchesLetter {
+	return matchesLetter{
+		base:      m.base,
+		letter:    m.letter,
+		nextState: m.nextState,
+		endState:  true,
+	}
+}
+
+func (m matchesLetter) Base(state finiteState) matchesLetter {
+	return matchesLetter{
+		base:      state,
+		letter:    m.letter,
+		nextState: m.nextState,
+		endState:  m.endState,
+	}
 }
