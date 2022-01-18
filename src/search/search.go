@@ -103,3 +103,7 @@ func (s *search) Search(ctx context.Context, target string, out chan Result) {
 	}
 }
 
+func (s *search) SearchRegex(ctx context.Context, regex string, out chan Result) {
+
+}
+
