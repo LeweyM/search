@@ -18,28 +18,32 @@ func TestFsm(t *testing.T) {
 	}{
 		{
 			s:                  "aaaa",
-			finiteStateMachine: AAAMatcher(),
+			finiteStateMachine: aaaMatcher(t),
 			expectedResults:    []int{2, 3},
 		},
 		{
 			s:                  "ab",
-			finiteStateMachine: ABCMatcher(),
+			finiteStateMachine: abcMatcher(t),
 			expectedResults:    []int{},
 		}, {
 			s:                  "abcdefg",
-			finiteStateMachine: ABCMatcher(),
+			finiteStateMachine: abcMatcher(t),
 			expectedResults:    []int{2}, //gets end of result, TODO: get beginning and end
 		}, {
+			s:                  "abcabc",
+			finiteStateMachine: abcMatcher(t),
+			expectedResults:    []int{2, 5},
+		}, {
 			s:                  "abcdefg",
-			finiteStateMachine: CMatcher(),
+			finiteStateMachine: cMatcher(t),
 			expectedResults:    []int{2},
 		}, {
 			s:                  "ccc",
-			finiteStateMachine: CMatcher(),
+			finiteStateMachine: cMatcher(t),
 			expectedResults:    []int{0, 1, 2},
 		}, {
 			s:                  "abd",
-			finiteStateMachine: CMatcher(),
+			finiteStateMachine: cMatcher(t),
 			expectedResults:    []int{},
 		},
 	} {
@@ -47,57 +51,6 @@ func TestFsm(t *testing.T) {
 			test(t, tt.s, tt.finiteStateMachine.fs, tt.expectedResults)
 		})
 	}
-}
-
-func AAAMatcher() fsMachine {
-	return fsMachine{description: "aaa", fs: buildAAAMatcher()}
-}
-
-// () -a-> () -a-> () -a-> (!) <-a
-//  <-----------------------
-func buildAAAMatcher() finiteState {
-	aRecursive := matchesLetter{letter: 'a'}.End()
-	aRecursive.nextState = &aRecursive
-	aMatcher := matchesLetter{letter: 'a', nextState: &aRecursive}
-	aaMatcher := matchesLetter{letter: 'a', nextState: &aMatcher}
-	aaaMatcher := matchesLetter{letter: 'a', nextState: &aaMatcher}
-	aRecursive = aRecursive.Base(&aaMatcher)
-	aaaMatcher = aaaMatcher.Base(&aaMatcher)
-	aaMatcher = aaMatcher.Base(&aaMatcher)
-	aMatcher = aMatcher.Base(&aaMatcher)
-	return aaaMatcher
-}
-
-func ABCMatcher() fsMachine {
-	return fsMachine{description: "abc", fs: buildABCMatcher()}
-}
-
-// () -a-> () -b-> () -c-> (!)
-func buildABCMatcher() finiteState {
-	abcExitMatcher := matchesLetter{letter: 'a'}.End()
-	cMatcher := matchesLetter{letter: 'c', nextState: &abcExitMatcher}
-	bcMatcher := matchesLetter{letter: 'b', nextState: &cMatcher}
-	abcMatcher := matchesLetter{letter: 'a', nextState: &bcMatcher}
-	abcExitMatcher.nextState = &bcMatcher
-	cMatcher = cMatcher.Base(&abcMatcher)
-	bcMatcher = bcMatcher.Base(&abcMatcher)
-	abcMatcher = abcMatcher.Base(&abcMatcher)
-	abcExitMatcher = abcExitMatcher.Base(&abcMatcher)
-	return abcMatcher
-}
-
-func CMatcher() fsMachine {
-	return fsMachine{description: "c", fs: buildCMatcher()}
-}
-
-// () -c-> (!) <--c
-func buildCMatcher() finiteState {
-	cMatcher := matchesLetter{letter: 'c'}.End()
-	cMatcher.nextState = &cMatcher
-	rootState := matchesLetter{letter: 'c', nextState: &cMatcher}
-	rootState = rootState.Base(&rootState)
-	cMatcher = cMatcher.Base(&rootState)
-	return rootState
 }
 
 func test(t *testing.T, s string, finiteStateMachine finiteState, expectedResults []int) {
@@ -122,4 +75,46 @@ func test(t *testing.T, s string, finiteStateMachine finiteState, expectedResult
 			t.Fatalf("wrong result for result %d: expected %d, got %d", j, expectedResults[j], results[j])
 		}
 	}
+}
+
+// () -a-> () -a-> () -a-> (!) <-a
+//  <-----------------------
+func aaaMatcher(t *testing.T) fsMachine {
+	state, err := NewBuilder().
+		State(matchesLetter{letter: 'a'}).
+		State(matchesLetter{letter: 'a'}).
+		State(matchesLetter{letter: 'a'}).
+		State(matchesLetter{letter: 'a'}).End().Recursive().
+		Build()
+	if err != nil {
+		t.Fatalf("Cannot build finite state machine: %v", err)
+	}
+	return fsMachine{description: "aaa", fs: state}
+}
+
+// () -a-> () -b-> () -c-> (!) -a
+//          ^-------------------
+func abcMatcher(t *testing.T) fsMachine {
+	state, err := NewBuilder().
+		State(matchesLetter{letter: 'a'}).
+		State(matchesLetter{letter: 'b'}).
+		State(matchesLetter{letter: 'c'}).
+		State(matchesLetter{letter: 'a'}).End().To(1).
+		Build()
+	if err != nil {
+		t.Fatalf("Cannot build finite state machine: %v", err)
+	}
+	return fsMachine{description: "abc", fs: state}
+}
+
+// () -c-> (!) <--c
+func cMatcher(t *testing.T) fsMachine {
+	state, err := NewBuilder().
+		State(matchesLetter{letter: 'c'}).
+		State(matchesLetter{letter: 'c'}).End().Recursive().
+		Build()
+	if err != nil {
+		t.Fatalf("Cannot build finite state machine: %v", err)
+	}
+	return fsMachine{description: "c", fs: state}
 }
