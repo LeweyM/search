@@ -10,6 +10,31 @@ type fs2Machine struct {
 	fs          *machine
 }
 
+func TestWildcardMatcher(t *testing.T) {
+	// () -a-> (r)<-* -b-> (!)
+	m := NewMachine(3).
+		AddTransition(1, 2, 'a').
+		AddWildTransition(2, 2).
+		AddTransition(2, 3, 'b').
+		SetSuccess(3)
+
+	for _, tt := range []struct {
+		s               string
+		expectedResults []result
+	}{
+		{"azzzb", []result{{0, 4}}},
+		{"azzz", []result{}},
+		{"ba", []result{}},
+		{"aaaabbbb", []result{{0, 4}}},
+		{"ababaccb", []result{{0, 1}, {2, 3}, {4, 7}}},
+	} {
+		t.Run(fmt.Sprintf("FindAll for 'a.*b' in string '%s'", tt.s), func(t *testing.T) {
+			m.Reset()
+			testFindAll(t, tt.s, m, tt.expectedResults)
+		})
+	}
+}
+
 func TestFsm2(t *testing.T) {
 	for _, tt := range []struct {
 		s                  string
@@ -53,35 +78,14 @@ func TestFsm2(t *testing.T) {
 			expectedResults:    []result{},
 		},
 	} {
-		t.Run(fmt.Sprintf("Search for %s in string '%s'", tt.finiteStateMachine.description, tt.s), func(t *testing.T) {
-			test2(t, tt.s, tt.finiteStateMachine.fs, tt.expectedResults)
+		t.Run(fmt.Sprintf("FindAll for %s in string '%s'", tt.finiteStateMachine.description, tt.s), func(t *testing.T) {
+			testFindAll(t, tt.s, tt.finiteStateMachine.fs, tt.expectedResults)
 		})
 	}
 }
 
-type result struct {
-	start, end int
-}
-
-func test2(t *testing.T, s string, finiteStateMachine *machine, expectedResults []result) {
-	var results []result
-
-	start := 0
-	end := 0
-	// not using iterator as i here as it counts bytes, not runes
-	for _, char := range s {
-		currentState := finiteStateMachine.Next(char)
-		if currentState == Success {
-			results = append(results, result{start: start, end: end})
-			finiteStateMachine.Reset()
-			start = end + 1
-		}
-		if currentState == Fail {
-			finiteStateMachine.Reset()
-			start = end + 1
-		}
-		end++
-	}
+func testFindAll(t *testing.T, s string, finiteStateMachine *machine, expectedResults []result) {
+	results := FindAll(finiteStateMachine, s)
 
 	if len(results) != len(expectedResults) {
 		t.Fatalf("wrong number of results, expected %d, got %d", len(expectedResults), len(results))

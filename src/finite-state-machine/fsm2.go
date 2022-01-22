@@ -15,9 +15,12 @@ type transition struct {
 	input rune
 }
 
+type wildTransition int
+
 type state struct {
-	transitions []transition
-	stateType   StateType
+	transitions    []transition
+	wildTransition *wildTransition
+	stateType      StateType
 }
 
 type machine struct {
@@ -67,6 +70,13 @@ func (m *machine) Next(input rune) StateType {
 		}
 	}
 
+	// Decision: normal transitions take precedence over wild transitions
+	if !hasTransition && m.states[m.currentState].wildTransition != nil {
+		m.currentState = int(*m.states[m.currentState].wildTransition)
+		hasTransition = true
+	}
+
+	// having no transition means the fsm enters a failed state
 	if !hasTransition {
 		m.currentState = 0
 	}
@@ -75,4 +85,10 @@ func (m *machine) Next(input rune) StateType {
 }
 func (m *machine) Reset() {
 	m.currentState = InitialState
+}
+
+func (m *machine) AddWildTransition(from, to int) *machine {
+	w := wildTransition(to)
+	m.states[from].wildTransition = &w
+	return m
 }
