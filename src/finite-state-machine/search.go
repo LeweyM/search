@@ -9,20 +9,33 @@ func FindAll(finiteStateMachine *machine, searchString string) []result {
 
 	start := 0
 	end := 0
-	// not using iterator as i here as it counts bytes, not runes
-	for _, char := range searchString {
+	runes := []rune(searchString)
+	hasRerunFail := false
+	for end < len(runes) {
+		char := runes[end]
 		currentState := finiteStateMachine.Next(char)
-		if currentState == Success {
+		switch currentState {
+		case Success:
 			results = append(results, result{start: start, end: end})
 			finiteStateMachine.Reset()
-			start = end + 1
-		}
-		if currentState == Fail {
+			end++
+			start = end
+			break
+		case Fail:
 			finiteStateMachine.Reset()
-			start = end + 1
+			// in the case that a search fails, we want to rerun that char once in case the char that
+			// fails one match is the beginning of another match
+			if !hasRerunFail {
+				hasRerunFail = true
+			} else {
+				end++
+				hasRerunFail = false
+			}
+			start = end
+			break
+		default:
+			end++
 		}
-		end++
 	}
-
 	return results
 }

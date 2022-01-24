@@ -10,8 +10,79 @@ type fs2Machine struct {
 	fs          *machine
 }
 
+// Overlapping branches can be reduced to single matching branches.
+// One option is not to try to resolve this but to compile
+// any overlaps into a single matcher.
+//
+// i.e. "(dog|dot)" => "do(g|t)"
+func TestOverlappingBranchMatcher(t *testing.T) {
+	// (1) -d-> (2) -o-> (3) -g-> (4!)
+	//     -d-> (5) -o-> (6) -t-> (7!)
+
+	// or, as composable machines
+	// (1) -> (dog) -> (2)
+	//     -> (dot) ----^
+	desc := "(dog|dot)"
+	dog := NewMachine(4).
+		AddTransition(1, 2, 'd').
+		AddTransition(2, 3, 'o').
+		AddTransition(3, 4, 'g').SetSuccess(4)
+	dot := NewMachine(4).
+		AddTransition(1, 2, 'd').
+		AddTransition(2, 3, 'o').
+		AddTransition(3, 4, 't').SetSuccess(4)
+	m := NewMachine(2).
+		AddMachineTransition(1, 2, dog).
+		AddMachineTransition(1, 2, dot).SetSuccess(2)
+
+	for _, tt := range []struct {
+		s               string
+		expectedResults []result
+	}{
+		{"dog", []result{{0, 2}}},
+		{"dot", []result{{0, 2}}},
+		{"dox", []result{}},
+		{"doxdog", []result{{3, 5}}},
+		{"doxdot", []result{{3, 5}}},
+		{"dodot", []result{{2, 4}}},
+		{"dodog", []result{{2, 4}}},
+	} {
+		t.Run(fmt.Sprintf("FindAll for '%s' in string '%s'", desc, tt.s), func(t *testing.T) {
+			m.Reset()
+			testFindAll(t, tt.s, m, tt.expectedResults)
+		})
+	}
+}
+
+func TestBranchMatcher(t *testing.T) {
+	// (1) -a-> (2) -b-> (3) -c-> (4!)
+	//			    -d-> (5) -e---^
+	desc := "a(bc|de)"
+	m := NewMachine(5).
+		AddTransition(1, 2, 'a').
+		AddTransition(2, 3, 'b').
+		AddTransition(3, 4, 'c').SetSuccess(4).
+		AddTransition(2, 5, 'd').
+		AddTransition(5, 4, 'e')
+
+	for _, tt := range []struct {
+		s               string
+		expectedResults []result
+	}{
+		{"abc", []result{{0, 2}}},
+		{"ade", []result{{0, 2}}},
+		{"abd", []result{}},
+	} {
+		t.Run(fmt.Sprintf("FindAll for '%s' in string '%s'", desc, tt.s), func(t *testing.T) {
+			m.Reset()
+			testFindAll(t, tt.s, m, tt.expectedResults)
+		})
+	}
+}
+
 func TestWildcardMatcher(t *testing.T) {
 	// () -a-> (r)<-* -b-> (!)
+	desc := "a.*b"
 	m := NewMachine(3).
 		AddTransition(1, 2, 'a').
 		AddWildTransition(2, 2).
@@ -28,7 +99,7 @@ func TestWildcardMatcher(t *testing.T) {
 		{"aaaabbbb", []result{{0, 4}}},
 		{"ababaccb", []result{{0, 1}, {2, 3}, {4, 7}}},
 	} {
-		t.Run(fmt.Sprintf("FindAll for 'a.*b' in string '%s'", tt.s), func(t *testing.T) {
+		t.Run(fmt.Sprintf("FindAll for '%s' in string '%s'", desc, tt.s), func(t *testing.T) {
 			m.Reset()
 			testFindAll(t, tt.s, m, tt.expectedResults)
 		})
@@ -88,12 +159,12 @@ func testFindAll(t *testing.T, s string, finiteStateMachine *machine, expectedRe
 	results := FindAll(finiteStateMachine, s)
 
 	if len(results) != len(expectedResults) {
-		t.Fatalf("wrong number of results, expected %d, got %d", len(expectedResults), len(results))
+		t.Fatalf("wrong number of results for string '%s', expected %+v, got %+v", s, len(expectedResults), len(results))
 	}
 
 	for j := range results {
 		if results[j] != expectedResults[j] {
-			t.Fatalf("wrong result for result %d: expected %d, got %d", j, expectedResults[j], results[j])
+			t.Fatalf("wrong result for string '%s': expected %d, got %d", s, expectedResults[j], results[j])
 		}
 	}
 }
