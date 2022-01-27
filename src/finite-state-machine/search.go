@@ -4,7 +4,12 @@ type result struct {
 	start, end int
 }
 
-func FindAll(finiteStateMachine *machine, searchString string) []result {
+type Machine interface {
+	Next(input rune) StateType
+	Reset()
+}
+
+func FindAll(finiteStateMachine Machine, searchString string) []result {
 	var results []result
 
 	start := 0
