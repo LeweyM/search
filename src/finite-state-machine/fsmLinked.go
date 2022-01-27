@@ -1,32 +1,26 @@
 package finite_state_machine
 
-type letterTransitionLinked struct {
-	to    *stateLinked
-	input rune
-}
+type Predicate func(input rune) bool
 
-type wildTransitionLinked struct {
-	to *stateLinked
+type transitionLinked struct {
+	to        destination
+	predicate Predicate
 }
 
 type stateLinked struct {
-	id              int
-	transitions     []letterTransitionLinked
-	wildTransitions []wildTransitionLinked
-	stateType       StateType
+	id           int
+	transitions1 []transitionLinked
+	stateType    StateType
 }
 
 type destination *stateLinked
 
 func (s *stateLinked) matchingTransitions(input rune) []destination {
 	var matchingTransitions []destination
-	for _, t := range s.transitions {
-		if t.input == input {
+	for _, t := range s.transitions1 {
+		if t.predicate(input) {
 			matchingTransitions = append(matchingTransitions, t.to)
 		}
-	}
-	for _, t := range s.wildTransitions {
-		matchingTransitions = append(matchingTransitions, t.to)
 	}
 	return append(matchingTransitions)
 }
@@ -121,9 +115,9 @@ func (b *builder) AddTransition(from, to int, letter rune) *builder {
 	if from >= len(b.states) || to >= len(b.states) {
 		panic("Cannot set a transition for a state outside of range")
 	}
-	b.states[from].transitions = append(b.states[from].transitions, letterTransitionLinked{
-		to:    b.states[to],
-		input: letter,
+	b.states[from].transitions1 = append(b.states[from].transitions1, transitionLinked{
+		to:        b.states[to],
+		predicate: func(input rune) bool { return input == letter },
 	})
 	return b
 }
@@ -141,8 +135,9 @@ func (b *builder) AddWildTransition(from, to int) *builder {
 	if from >= len(b.states) || to >= len(b.states) {
 		panic("Cannot set a transition for a state outside of range")
 	}
-	b.states[from].wildTransitions = append(b.states[from].wildTransitions, wildTransitionLinked{
-		to: b.states[to],
+	b.states[from].transitions1 = append(b.states[from].transitions1, transitionLinked{
+		to:        b.states[to],
+		predicate: func(input rune) bool { return true },
 	})
 	return b
 }
