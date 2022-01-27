@@ -3,7 +3,9 @@ package finite_state_machine
 type Predicate func(input rune) bool
 
 type transitionLinked struct {
-	to        destination
+	// to: a pointer to the next state
+	to destination
+	// predicate: a function to determine if the runner should move to the next state
 	predicate Predicate
 }
 
@@ -101,12 +103,15 @@ type builder struct {
 	states []*stateLinked
 }
 
+var GlobalIdCounter = 0
+
 func NewStateLinkedBuilder(n int) *builder {
 	var states []*stateLinked
 	states = append(states, &stateLinked{id: 0, stateType: Fail}) // stand in for fail state
 
 	for i := 1; i <= n; i++ {
-		states = append(states, &stateLinked{id: i, stateType: Normal})
+		GlobalIdCounter++
+		states = append(states, &stateLinked{id: GlobalIdCounter, stateType: Normal})
 	}
 	return &builder{states: states}
 }
@@ -122,15 +127,6 @@ func (b *builder) AddTransition(from, to int, letter rune) *builder {
 	return b
 }
 
-func (b *builder) SetSuccess(n int) *builder {
-	b.states[n].stateType = Success
-	return b
-}
-
-func (b *builder) Build() *stateLinked {
-	return b.states[1]
-}
-
 func (b *builder) AddWildTransition(from, to int) *builder {
 	if from >= len(b.states) || to >= len(b.states) {
 		panic("Cannot set a transition for a state outside of range")
@@ -140,4 +136,27 @@ func (b *builder) AddWildTransition(from, to int) *builder {
 		predicate: func(input rune) bool { return true },
 	})
 	return b
+}
+
+func (b *builder) AddMachineTransition(from int, state *stateLinked) *builder {
+	if from >= len(b.states) {
+		panic("Cannot set a transition for a state outside of range")
+	}
+	for _, t := range state.transitions1 {
+		// when composing a transition, we merge the first transitions of the new state into the transition of the from state
+		b.states[from].transitions1 = append(b.states[from].transitions1, transitionLinked{
+			to:        t.to,
+			predicate: t.predicate,
+		})
+	}
+	return b
+}
+
+func (b *builder) SetSuccess(n int) *builder {
+	b.states[n].stateType = Success
+	return b
+}
+
+func (b *builder) Build() *stateLinked {
+	return b.states[1]
 }

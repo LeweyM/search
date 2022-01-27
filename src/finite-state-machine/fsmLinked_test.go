@@ -13,7 +13,6 @@ import (
 func TestLinkedOverlappingBranchMatcher(t *testing.T) {
 	// (1) -d-> (2) -o-> (3) -g-> (4!)
 	//     -d-> (5) -o-> (6) -t-> (7!)
-
 	desc := "(dog|dot)"
 	m := NewStateLinkedBuilder(7).
 		AddTransition(1, 2, 'd').
@@ -42,9 +41,49 @@ func TestLinkedOverlappingBranchMatcher(t *testing.T) {
 			testFindAll(t, tt.s, runner, tt.expectedResults)
 		})
 	}
-		// or, as composable machines
-		// (1) -> (dog) -> (2)
-		//     -> (dot) ----^
+}
+
+func TestOverlappingBranchComposableMatcher(t *testing.T) {
+	// (1) -d-> (2) -o-> (3) -g-> (4!)
+	//     -d-> (5) -o-> (6) -t-> (7!)
+
+	// or, as composable machines
+	// (9)(dog 1-2-3-4)!
+	//    (dot 5-6-7-8)!
+	desc := "(dog|dot)"
+	dog := NewStateLinkedBuilder(4).
+		AddTransition(1, 2, 'd').
+		AddTransition(2, 3, 'o').
+		AddTransition(3, 4, 'g').SetSuccess(4).
+		Build()
+	dot := NewStateLinkedBuilder(4).
+		AddTransition(1, 2, 'd').
+		AddTransition(2, 3, 'o').
+		AddTransition(3, 4, 't').SetSuccess(4).
+		Build()
+	m := NewStateLinkedBuilder(2).
+		AddMachineTransition(1, dog).
+		AddMachineTransition(1, dot).
+		Build()
+
+	for _, tt := range []struct {
+		s               string
+		expectedResults []result
+	}{
+		{"dog", []result{{0, 2}}},
+		{"dot", []result{{0, 2}}},
+		{"dox", []result{}},
+		{"doxdog", []result{{3, 5}}},
+		{"doxdot", []result{{3, 5}}},
+		{"dodot", []result{{2, 4}}},
+		{"dodog", []result{{2, 4}}},
+	} {
+		t.Run(fmt.Sprintf("FindAll for '%s' in string '%s'", desc, tt.s), func(t *testing.T) {
+			runner := NewRunner(m)
+			runner.Reset()
+			testFindAll(t, tt.s, runner, tt.expectedResults)
+		})
+	}
 }
 
 func TestLinkedBranchMatcher(t *testing.T) {
