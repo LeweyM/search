@@ -50,7 +50,7 @@ func TestOverlappingBranchComposableMatcher(t *testing.T) {
 	// or, as composable machines
 	// (9)(dog 1-2-3-4)!
 	//    (dot 5-6-7-8)!
-	desc := "(dog|dot)"
+	desc := "dog|dot"
 	dog := NewStateLinkedBuilder(4).
 		AddTransition(1, 2, 'd').
 		AddTransition(2, 3, 'o').
@@ -114,6 +114,55 @@ func TestLinkedBranchMatcher(t *testing.T) {
 	}
 }
 
+func TestManyRunnersLinked(t *testing.T) {
+	// (1) -a-> (2r)<-* -a-> (3) -a-> (4) -a-> (5) -a-> (6) -a-> (7!)
+	desc := "a*aaaaa"
+	m := NewStateLinkedBuilder(7).
+		AddTransition(1, 2, 'a').
+		AddWildTransition(2, 2).
+		AddTransition(2, 3, 'a').
+		AddTransition(3, 4, 'a').
+		AddTransition(4, 5, 'a').
+		AddTransition(5, 6, 'a').
+		AddTransition(6, 7, 'a').SetSuccess(7).
+		Build()
+
+	for _, tt := range []struct {
+		s               string
+		expectedResults []result
+	}{
+		{"aaaaaa", []result{{0, 5}}},
+	} {
+		testMachine(t, desc, tt, m)
+		testCompiledMachine(t, desc, tt)
+	}
+}
+
+func TestLinkedAnyCharacterMatcher(t *testing.T) {
+	// (1) -a-> (2) -*-> (3) -b-> (4!)
+	desc := "a.b"
+	m := NewStateLinkedBuilder(4).
+		AddTransition(1, 2, 'a').
+		AddWildTransition(2, 3).
+		AddTransition(3, 4, 'b').
+		SetSuccess(4).
+		Build()
+
+	for _, tt := range []struct {
+		s               string
+		expectedResults []result
+	}{
+		{"", []result{}},
+		{"ab", []result{}},
+		{"azb", []result{{0, 2}}},
+		{"acb", []result{{0, 2}}},
+		{"azzzb", []result{}},
+	} {
+		testMachine(t, desc, tt, m)
+		testCompiledMachine(t, desc, tt)
+	}
+}
+
 func TestLinkedWildcardMatcher(t *testing.T) {
 	// () -a-> (r)<-* -b-> (!)
 	desc := "a.*b"
@@ -128,17 +177,16 @@ func TestLinkedWildcardMatcher(t *testing.T) {
 		s               string
 		expectedResults []result
 	}{
+		{"ab", []result{{0, 1}}},
+		{"azb", []result{{0, 2}}},
 		{"azzzb", []result{{0, 4}}},
 		{"azzz", []result{}},
 		{"ba", []result{}},
 		{"aaaabbbb", []result{{0, 4}}},
 		{"ababaccb", []result{{0, 1}, {2, 3}, {4, 7}}},
 	} {
-		t.Run(fmt.Sprintf("FindAll for '%s' in string '%s'", desc, tt.s), func(t *testing.T) {
-			runner := NewRunner(m)
-			runner.Reset()
-			testFindAll(t, tt.s, runner, tt.expectedResults)
-		})
+		testMachine(t, desc, tt, m)
+		testCompiledMachine(t, desc, tt)
 	}
 }
 
@@ -160,11 +208,8 @@ func TestSimpleMatcher(t *testing.T) {
 		{"abcabc", []result{{0, 2}, {3, 5}}},
 		{"ab", []result{}},
 	} {
-		t.Run(fmt.Sprintf("FindAll for '%s' in string '%s'", desc, tt.s), func(t *testing.T) {
-			runner := NewRunner(m)
-			runner.Reset()
-			testFindAll(t, tt.s, runner, tt.expectedResults)
-		})
+		testMachine(t, desc, tt, m)
+		testCompiledMachine(t, desc, tt)
 	}
 }
 
@@ -186,10 +231,30 @@ func TestSimpleOverlappingMatcher(t *testing.T) {
 		{"aab", []result{}},
 		{"aaaaaa", []result{{0, 2}, {3, 5}}},
 	} {
-		t.Run(fmt.Sprintf("FindAll for '%s' in string '%s'", desc, tt.s), func(t *testing.T) {
-			runner := NewRunner(m)
-			runner.Reset()
-			testFindAll(t, tt.s, runner, tt.expectedResults)
-		})
+		testMachine(t, desc, tt, m)
+		testCompiledMachine(t, desc, tt)
 	}
+}
+
+func testCompiledMachine(t *testing.T, desc string, tt struct {
+	s               string
+	expectedResults []result
+}) bool {
+	return t.Run(fmt.Sprintf("FindAll for compiled('%s') in string '%s'", desc, tt.s), func(t *testing.T) {
+		compiledMachine := Compile(desc)
+		runner := NewRunner(compiledMachine)
+		runner.Reset()
+		testFindAll(t, tt.s, runner, tt.expectedResults)
+	})
+}
+
+func testMachine(t *testing.T, desc string, tt struct {
+	s               string
+	expectedResults []result
+}, m *StateLinked) bool {
+	return t.Run(fmt.Sprintf("FindAll for '%s' in string '%s'", desc, tt.s), func(t *testing.T) {
+		runner := NewRunner(m)
+		runner.Reset()
+		testFindAll(t, tt.s, runner, tt.expectedResults)
+	})
 }

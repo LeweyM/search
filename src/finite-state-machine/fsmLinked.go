@@ -9,15 +9,15 @@ type transitionLinked struct {
 	predicate Predicate
 }
 
-type stateLinked struct {
+type StateLinked struct {
 	id           int
 	transitions1 []transitionLinked
 	stateType    StateType
 }
 
-type destination *stateLinked
+type destination *StateLinked
 
-func (s *stateLinked) matchingTransitions(input rune) []destination {
+func (s *StateLinked) matchingTransitions(input rune) []destination {
 	var matchingTransitions []destination
 	for _, t := range s.transitions1 {
 		if t.predicate(input) {
@@ -28,17 +28,17 @@ func (s *stateLinked) matchingTransitions(input rune) []destination {
 }
 
 type branch struct {
-	currState *stateLinked
+	currState *StateLinked
 }
 
 type runner struct {
-	head      *stateLinked
-	failState *stateLinked
+	head      *StateLinked
+	failState *StateLinked
 	branches  []branch
 }
 
-func NewRunner(head *stateLinked) *runner {
-	failState := &stateLinked{id: 0, stateType: Fail}
+func NewRunner(head *StateLinked) *runner {
+	failState := &StateLinked{id: 0, stateType: Fail}
 
 	return &runner{
 		failState: failState,
@@ -100,18 +100,18 @@ func (r *runner) activeBranches() []branch {
 }
 
 type builder struct {
-	states []*stateLinked
+	states []*StateLinked
 }
 
 var GlobalIdCounter = 0
 
 func NewStateLinkedBuilder(n int) *builder {
-	var states []*stateLinked
-	states = append(states, &stateLinked{id: 0, stateType: Fail}) // stand in for fail state
+	var states []*StateLinked
+	states = append(states, &StateLinked{id: 0, stateType: Fail}) // stand in for fail state
 
 	for i := 1; i <= n; i++ {
 		GlobalIdCounter++
-		states = append(states, &stateLinked{id: GlobalIdCounter, stateType: Normal})
+		states = append(states, &StateLinked{id: GlobalIdCounter, stateType: Normal})
 	}
 	return &builder{states: states}
 }
@@ -138,7 +138,7 @@ func (b *builder) AddWildTransition(from, to int) *builder {
 	return b
 }
 
-func (b *builder) AddMachineTransition(from int, state *stateLinked) *builder {
+func (b *builder) AddMachineTransition(from int, state *StateLinked) *builder {
 	if from >= len(b.states) {
 		panic("Cannot set a transition for a state outside of range")
 	}
@@ -157,6 +157,6 @@ func (b *builder) SetSuccess(n int) *builder {
 	return b
 }
 
-func (b *builder) Build() *stateLinked {
+func (b *builder) Build() *StateLinked {
 	return b.states[1]
 }
