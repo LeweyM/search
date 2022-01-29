@@ -109,16 +109,16 @@ func NewStateLinkedBuilder(n int) *builder {
 	var states []*StateLinked
 	states = append(states, &StateLinked{id: 0, stateType: Fail}) // stand in for fail state
 
-	for i := 1; i <= n; i++ {
-		GlobalIdCounter++
-		states = append(states, &StateLinked{id: GlobalIdCounter, stateType: Normal})
-	}
+	//for i := 1; i <= n; i++ {
+	//	GlobalIdCounter++
+	//	states = append(states, &StateLinked{id: GlobalIdCounter, stateType: Normal})
+	//}
 	return &builder{states: states}
 }
 
 func (b *builder) AddTransition(from, to int, letter rune) *builder {
 	if from >= len(b.states) || to >= len(b.states) {
-		panic("Cannot set a transition for a state outside of range")
+		b.fillEmptyStatesTo(to)
 	}
 	b.states[from].transitions1 = append(b.states[from].transitions1, transitionLinked{
 		to:        b.states[to],
@@ -129,7 +129,7 @@ func (b *builder) AddTransition(from, to int, letter rune) *builder {
 
 func (b *builder) AddWildTransition(from, to int) *builder {
 	if from >= len(b.states) || to >= len(b.states) {
-		panic("Cannot set a transition for a state outside of range")
+		b.fillEmptyStatesTo(to)
 	}
 	b.states[from].transitions1 = append(b.states[from].transitions1, transitionLinked{
 		to:        b.states[to],
@@ -140,7 +140,7 @@ func (b *builder) AddWildTransition(from, to int) *builder {
 
 func (b *builder) AddMachineTransition(from int, state *StateLinked) *builder {
 	if from >= len(b.states) {
-		panic("Cannot set a transition for a state outside of range")
+		b.fillEmptyStatesTo(from)
 	}
 	for _, t := range state.transitions1 {
 		// when composing a transition, we merge the first transitions of the new state into the transition of the from state
@@ -150,6 +150,13 @@ func (b *builder) AddMachineTransition(from int, state *StateLinked) *builder {
 		})
 	}
 	return b
+}
+
+func (b *builder) fillEmptyStatesTo(from int) {
+	for i := len(b.states); i <= from; i++ {
+		GlobalIdCounter++
+		b.states = append(b.states, &StateLinked{id: GlobalIdCounter, stateType: Normal})
+	}
 }
 
 func (b *builder) SetSuccess(n int) *builder {
