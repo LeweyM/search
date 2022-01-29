@@ -5,6 +5,23 @@ import (
 	"testing"
 )
 
+func TestLinkedDeeplyNestedCompiledMatcher(t *testing.T) {
+	// equivalent to "abcd|fg"
+	desc := "((abcd)|(fg))"
+	//desc := "(((ab)(c)d)|(fg))" // TODO: Parenthesis for catenations
+	for _, tt := range []struct {
+		s               string
+		expectedResults []result
+	}{
+		{"abcd", []result{{0, 3}}},
+		{"fg", []result{{0, 1}}},
+		{"abc", []result{}},
+		{"f", []result{}},
+	} {
+		testCompiledMachine(t, desc, tt)
+	}
+}
+
 // Overlapping branches can be reduced to single matching branches.
 // One option is not to try to resolve this but to compile
 // any overlaps into a single matcher.
@@ -99,12 +116,10 @@ func TestLinkedBranchMatcher(t *testing.T) {
 		{"abc", []result{{0, 2}}},
 		{"ade", []result{{0, 2}}},
 		{"abd", []result{}},
+		{"bc", []result{}},
 	} {
-		t.Run(fmt.Sprintf("FindAll for '%s' in string '%s'", desc, tt.s), func(t *testing.T) {
-			runner := NewRunner(m)
-			runner.Reset()
-			testFindAll(t, tt.s, runner, tt.expectedResults)
-		})
+		testMachine(t, desc, tt, m)
+		testCompiledMachine(t, desc, tt)
 	}
 }
 

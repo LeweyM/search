@@ -2,38 +2,52 @@ package finite_state_machine
 
 func Compile(input string) *StateLinked {
 	symbols := lex(input)
-	n := len(symbols) + 1
+	fragment, _ := compileFragment(symbols)
+	return fragment
+}
+
+func compileFragment(symbols []symbol) (*StateLinked, int) {
 	var branches []*StateLinked
-	builder := NewStateLinkedBuilder(n)
-	prevStateNumber := 1
-	for _, symbol := range symbols {
+	builder := NewStateLinkedBuilder(len(symbols) + 1)
+	symbolCounter := 0
+	prevSymbolIndex := 1
+	Loop: for len(symbols) > 0 {
+		symbol := symbols[0]
 		switch symbol.symbolType {
-		case LParen, RParen:
-			break // skip for now
+		case LParen:
+			innerFragment, matchingParenIndex := compileFragment(symbols[1:])
+			builder.AddMachineTransition(prevSymbolIndex, innerFragment)
+			prevSymbolIndex = matchingParenIndex+1
+			symbols = symbols[prevSymbolIndex:]
+		case RParen:
+			break Loop
 		case Pipe:
-			builder = builder.SetSuccess(prevStateNumber)
+			builder = builder.SetSuccess(prevSymbolIndex)
 			branches = append(branches, builder.Build())
-			prevStateNumber = 1
+			builder = NewStateLinkedBuilder(len(symbols) + 1)
+			prevSymbolIndex = 1
 		case Wild:
 			if symbol.modifier == ZeroOrMore {
-				builder = builder.AddWildTransition(prevStateNumber, prevStateNumber)
+				builder = builder.AddWildTransition(prevSymbolIndex, prevSymbolIndex)
 			} else {
-				builder = builder.AddWildTransition(prevStateNumber, prevStateNumber+1)
-				prevStateNumber++
+				builder = builder.AddWildTransition(prevSymbolIndex, prevSymbolIndex+1)
+				prevSymbolIndex++
 			}
 		default:
-			builder = builder.AddTransition(prevStateNumber, prevStateNumber+1, symbol.letter)
-			prevStateNumber++
+			builder = builder.AddTransition(prevSymbolIndex, prevSymbolIndex+1, symbol.letter)
+			prevSymbolIndex++
 		}
+		symbolCounter++
+		symbols = symbols[1:]
 	}
-	builder = builder.SetSuccess(prevStateNumber)
+	builder = builder.SetSuccess(prevSymbolIndex)
 
 	for _, b := range branches {
 		builder.AddMachineTransition(1, b)
 	}
 
 	stateLinked := builder.Build()
-	return stateLinked
+	return stateLinked, symbolCounter
 }
 
 type modifier string
