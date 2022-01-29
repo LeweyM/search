@@ -35,11 +35,8 @@ func TestLinkedOverlappingBranchMatcher(t *testing.T) {
 		{"dodot", []result{{2, 4}}},
 		{"dodog", []result{{2, 4}}},
 	} {
-		t.Run(fmt.Sprintf("FindAll for '%s' in string '%s'", desc, tt.s), func(t *testing.T) {
-			runner := NewRunner(m)
-			runner.Reset()
-			testFindAll(t, tt.s, runner, tt.expectedResults)
-		})
+		testMachine(t, desc, tt, m)
+		testCompiledMachine(t, desc, tt)
 	}
 }
 
@@ -78,11 +75,8 @@ func TestOverlappingBranchComposableMatcher(t *testing.T) {
 		{"dodot", []result{{2, 4}}},
 		{"dodog", []result{{2, 4}}},
 	} {
-		t.Run(fmt.Sprintf("FindAll for '%s' in string '%s'", desc, tt.s), func(t *testing.T) {
-			runner := NewRunner(m)
-			runner.Reset()
-			testFindAll(t, tt.s, runner, tt.expectedResults)
-		})
+		testMachine(t, desc, tt, m)
+		testCompiledMachine(t, desc, tt)
 	}
 }
 
