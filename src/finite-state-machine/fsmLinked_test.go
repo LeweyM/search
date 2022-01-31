@@ -5,14 +5,16 @@ import (
 	"testing"
 )
 
+type fsmTest struct {
+	s               string
+	expectedResults []result
+}
+
 func TestLinkedDeeplyNestedCompiledMatcher(t *testing.T) {
 	// equivalent to "abcd|fg"
-	desc := "((abcd)|(fg))"
-	//desc := "(((ab)(c)d)|(fg))" // TODO: Parenthesis for catenations
-	for _, tt := range []struct {
-		s               string
-		expectedResults []result
-	}{
+	//desc := "((abcd)|(fg))"
+	desc := "(((ab)(c)d)|(fg))" // TODO: Parenthesis for catenations
+	for _, tt := range []fsmTest{
 		{"abcd", []result{{0, 3}}},
 		{"fg", []result{{0, 1}}},
 		{"abc", []result{}},
@@ -31,19 +33,16 @@ func TestLinkedOverlappingBranchMatcher(t *testing.T) {
 	// (1) -d-> (2) -o-> (3) -g-> (4!)
 	//     -d-> (5) -o-> (6) -t-> (7!)
 	desc := "(dog|dot)"
-	m := NewStateLinkedBuilder(7).
+	m := NewStateLinkedBuilder().
 		AddTransition(1, 2, 'd').
 		AddTransition(2, 3, 'o').
-		AddTransition(3, 4, 'g').SetSuccess(4).
+		AddTransition(3, 4, 'g').
 		AddTransition(1, 5, 'd').
 		AddTransition(5, 6, 'o').
-		AddTransition(6, 7, 't').SetSuccess(7).
+		AddTransition(6, 7, 't').
 		Build()
 
-	for _, tt := range []struct {
-		s               string
-		expectedResults []result
-	}{
+	for _, tt := range []fsmTest{
 		{"dog", []result{{0, 2}}},
 		{"dot", []result{{0, 2}}},
 		{"dox", []result{}},
@@ -65,25 +64,22 @@ func TestOverlappingBranchComposableMatcher(t *testing.T) {
 	// (9)(dog 1-2-3-4)!
 	//    (dot 5-6-7-8)!
 	desc := "dog|dot"
-	dog := NewStateLinkedBuilder(4).
+	dog := NewStateLinkedBuilder().
 		AddTransition(1, 2, 'd').
 		AddTransition(2, 3, 'o').
-		AddTransition(3, 4, 'g').SetSuccess(4).
+		AddTransition(3, 4, 'g').
 		Build()
-	dot := NewStateLinkedBuilder(4).
+	dot := NewStateLinkedBuilder().
 		AddTransition(1, 2, 'd').
 		AddTransition(2, 3, 'o').
-		AddTransition(3, 4, 't').SetSuccess(4).
+		AddTransition(3, 4, 't').
 		Build()
-	m := NewStateLinkedBuilder(2).
+	m := NewStateLinkedBuilder().
 		AddMachineTransition(1, dog).
 		AddMachineTransition(1, dot).
 		Build()
 
-	for _, tt := range []struct {
-		s               string
-		expectedResults []result
-	}{
+	for _, tt := range []fsmTest{
 		{"dog", []result{{0, 2}}},
 		{"dot", []result{{0, 2}}},
 		{"dox", []result{}},
@@ -101,18 +97,15 @@ func TestLinkedBranchMatcher(t *testing.T) {
 	// (1) -a-> (2) -b-> (3) -c-> (4!)
 	//			    -d-> (5) -e---^
 	desc := "a(bc|de)"
-	m := NewStateLinkedBuilder(5).
+	m := NewStateLinkedBuilder().
 		AddTransition(1, 2, 'a').
 		AddTransition(2, 3, 'b').
-		AddTransition(3, 4, 'c').SetSuccess(4).
+		AddTransition(3, 4, 'c').
 		AddTransition(2, 5, 'd').
 		AddTransition(5, 4, 'e').
 		Build()
 
-	for _, tt := range []struct {
-		s               string
-		expectedResults []result
-	}{
+	for _, tt := range []fsmTest{
 		{"abc", []result{{0, 2}}},
 		{"ade", []result{{0, 2}}},
 		{"abd", []result{}},
@@ -125,42 +118,27 @@ func TestLinkedBranchMatcher(t *testing.T) {
 
 func TestManyRunnersLinked(t *testing.T) {
 	// (1) -a-> (2r)<-* -a-> (3) -a-> (4) -a-> (5) -a-> (6) -a-> (7!)
-	desc := "a*aaaaa"
-	m := NewStateLinkedBuilder(7).
-		AddTransition(1, 2, 'a').
-		AddWildTransition(2, 2).
-		AddTransition(2, 3, 'a').
-		AddTransition(3, 4, 'a').
-		AddTransition(4, 5, 'a').
-		AddTransition(5, 6, 'a').
-		AddTransition(6, 7, 'a').SetSuccess(7).
-		Build()
+	regex := "a*aaaaa"
 
-	for _, tt := range []struct {
-		s               string
-		expectedResults []result
-	}{
-		{"aaaaaa", []result{{0, 5}}},
+	for _, tt := range []fsmTest{
+		{"aaaaa", []result{{0, 4}}},
+		{"aaaaaa", []result{{0, 4}}},
+		{"aaaaaaa", []result{{0, 4}}},
 	} {
-		testMachine(t, desc, tt, m)
-		testCompiledMachine(t, desc, tt)
+		testCompiledMachine(t, regex, tt)
 	}
 }
 
 func TestLinkedAnyCharacterMatcher(t *testing.T) {
 	// (1) -a-> (2) -*-> (3) -b-> (4!)
 	desc := "a.b"
-	m := NewStateLinkedBuilder(4).
+	m := NewStateLinkedBuilder().
 		AddTransition(1, 2, 'a').
 		AddWildTransition(2, 3).
 		AddTransition(3, 4, 'b').
-		SetSuccess(4).
 		Build()
 
-	for _, tt := range []struct {
-		s               string
-		expectedResults []result
-	}{
+	for _, tt := range []fsmTest{
 		{"", []result{}},
 		{"ab", []result{}},
 		{"azb", []result{{0, 2}}},
@@ -172,20 +150,37 @@ func TestLinkedAnyCharacterMatcher(t *testing.T) {
 	}
 }
 
+func TestCompiledMatcher(t *testing.T) {
+	for _, tt := range []struct {
+		regex           string
+		input           string
+		expectedResults []result
+	}{
+		{"a*b", "ab", []result{{0, 1}}},
+		{"a*b", "aab", []result{{0, 2}}},
+		{"a*b", "aaab", []result{{0, 3}}},
+		{"a*b", "b", []result{{0, 0}}},
+		{"a*b", "bb", []result{{0, 0}, {1,1}}},
+		{"a*b", "a", []result{}},
+		{"a*b", "aa", []result{}},
+		{"a*b", "", []result{}},
+	} {
+		t.Run("character with wildcard modifier", func(t *testing.T) {
+			testCompiledMachine(t, tt.regex, fsmTest{s: tt.input, expectedResults: tt.expectedResults})
+		})
+	}
+}
+
 func TestLinkedWildcardMatcher(t *testing.T) {
 	// () -a-> (r)<-* -b-> (!)
 	desc := "a.*b"
-	m := NewStateLinkedBuilder(3).
+	m := NewStateLinkedBuilder().
 		AddTransition(1, 2, 'a').
 		AddWildTransition(2, 2).
 		AddTransition(2, 3, 'b').
-		SetSuccess(3).
 		Build()
 
-	for _, tt := range []struct {
-		s               string
-		expectedResults []result
-	}{
+	for _, tt := range []fsmTest{
 		{"ab", []result{{0, 1}}},
 		{"azb", []result{{0, 2}}},
 		{"azzzb", []result{{0, 4}}},
@@ -202,17 +197,13 @@ func TestLinkedWildcardMatcher(t *testing.T) {
 func TestSimpleMatcher(t *testing.T) {
 	//// () -a-> () -b-> () -c-> (!)
 	desc := "abc"
-	m := NewStateLinkedBuilder(4).
+	m := NewStateLinkedBuilder().
 		AddTransition(1, 2, 'a').
 		AddTransition(2, 3, 'b').
 		AddTransition(3, 4, 'c').
-		SetSuccess(4).
 		Build()
 
-	for _, tt := range []struct {
-		s               string
-		expectedResults []result
-	}{
+	for _, tt := range []fsmTest{
 		{"abcdefg", []result{{0, 2}}},
 		{"abcabc", []result{{0, 2}, {3, 5}}},
 		{"ab", []result{}},
@@ -225,17 +216,13 @@ func TestSimpleMatcher(t *testing.T) {
 func TestSimpleOverlappingMatcher(t *testing.T) {
 	//// () -a-> () -a-> () -a-> (!)
 	desc := "aaa"
-	m := NewStateLinkedBuilder(4).
+	m := NewStateLinkedBuilder().
 		AddTransition(1, 2, 'a').
 		AddTransition(2, 3, 'a').
 		AddTransition(3, 4, 'a').
-		SetSuccess(4).
 		Build()
 
-	for _, tt := range []struct {
-		s               string
-		expectedResults []result
-	}{
+	for _, tt := range []fsmTest{
 		{"aaa", []result{{0, 2}}},
 		{"aab", []result{}},
 		{"aaaaaa", []result{{0, 2}, {3, 5}}},
@@ -245,22 +232,16 @@ func TestSimpleOverlappingMatcher(t *testing.T) {
 	}
 }
 
-func testCompiledMachine(t *testing.T, desc string, tt struct {
-	s               string
-	expectedResults []result
-}) bool {
-	return t.Run(fmt.Sprintf("FindAll for compiled('%s') in string '%s'", desc, tt.s), func(t *testing.T) {
-		compiledMachine := Compile(desc)
+func testCompiledMachine(t *testing.T, regex string, tt fsmTest) bool {
+	return t.Run(fmt.Sprintf("FindAll for compiled('%s') in string '%s'", regex, tt.s), func(t *testing.T) {
+		compiledMachine := Compile(regex)
 		runner := NewRunner(compiledMachine)
 		runner.Reset()
 		testFindAll(t, tt.s, runner, tt.expectedResults)
 	})
 }
 
-func testMachine(t *testing.T, desc string, tt struct {
-	s               string
-	expectedResults []result
-}, m *StateLinked) bool {
+func testMachine(t *testing.T, desc string, tt fsmTest, m *StateLinked) bool {
 	return t.Run(fmt.Sprintf("FindAll for '%s' in string '%s'", desc, tt.s), func(t *testing.T) {
 		runner := NewRunner(m)
 		runner.Reset()

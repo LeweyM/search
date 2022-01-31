@@ -1,18 +1,20 @@
 package finite_state_machine
 
+import "fmt"
+
 type Predicate func(input rune) bool
 
 type transitionLinked struct {
 	// to: a pointer to the next state
 	to destination
 	// predicate: a function to determine if the runner should move to the next state
-	predicate Predicate
+	predicate   Predicate
+	description string
 }
 
 type StateLinked struct {
 	id           int
 	transitions1 []transitionLinked
-	stateType    StateType
 }
 
 type destination *StateLinked
@@ -27,6 +29,24 @@ func (s *StateLinked) matchingTransitions(input rune) []destination {
 	return append(matchingTransitions)
 }
 
+func (s *StateLinked) isSuccessState() bool {
+	return len(s.transitions1) == 0
+}
+
+func (s *StateLinked) merge(s2 *StateLinked) {
+	if s2.transitions1[0].to == nil {
+		s2.transitions1 = s2.transitions1[1:]
+	}
+	for _, t := range s2.transitions1 {
+		// when composing a transition, we merge the first transitions of the new state into the transition of the from state
+		s.transitions1 = append(s.transitions1, transitionLinked{
+			description: t.description,
+			to:        t.to,
+			predicate: t.predicate,
+		})
+	}
+}
+
 type branch struct {
 	currState *StateLinked
 }
@@ -38,7 +58,7 @@ type runner struct {
 }
 
 func NewRunner(head *StateLinked) *runner {
-	failState := &StateLinked{id: 0, stateType: Fail}
+	failState := &StateLinked{id: 0}
 
 	return &runner{
 		failState: failState,
@@ -48,7 +68,7 @@ func NewRunner(head *StateLinked) *runner {
 }
 
 func (r *runner) Next(input rune) StateType {
-	activeBranches := r.activeBranches()
+	activeBranches := r.nonFailedBranches()
 
 	for bIndex, b := range activeBranches {
 		matchingTransitions := b.currState.matchingTransitions(input)
@@ -73,12 +93,12 @@ func (r *runner) Next(input rune) StateType {
 	}
 
 	// recount active branches here as the number could have changed
-	activeBranches = r.activeBranches()
+	activeBranches = r.nonFailedBranches()
 	if len(activeBranches) == 0 {
 		return Fail
 	}
 	for _, b := range activeBranches {
-		if b.currState.stateType == Success {
+		if b.currState.isSuccessState() {
 			return Success
 		}
 	}
@@ -89,14 +109,18 @@ func (r *runner) Reset() {
 	r.branches = []branch{{currState: r.head}}
 }
 
-func (r *runner) activeBranches() []branch {
+func (r *runner) nonFailedBranches() []branch {
 	var activeBranches []branch
 	for _, b := range r.branches {
-		if b.currState.stateType == Normal || b.currState.stateType == Success {
+		if !r.onFailState(b) {
 			activeBranches = append(activeBranches, b)
 		}
 	}
 	return activeBranches
+}
+
+func (r *runner) onFailState(b branch) bool {
+	return b.currState == r.failState
 }
 
 type builder struct {
@@ -105,33 +129,28 @@ type builder struct {
 
 var GlobalIdCounter = 0
 
-func NewStateLinkedBuilder(n int) *builder {
+func NewStateLinkedBuilder() *builder {
 	var states []*StateLinked
-	states = append(states, &StateLinked{id: 0, stateType: Fail}) // stand in for fail state
-
-	//for i := 1; i <= n; i++ {
-	//	GlobalIdCounter++
-	//	states = append(states, &StateLinked{id: GlobalIdCounter, stateType: Normal})
-	//}
+	states = append(states, &StateLinked{id: 0}) // stand in for fail state
 	return &builder{states: states}
 }
 
 func (b *builder) AddTransition(from, to int, letter rune) *builder {
-	if from >= len(b.states) || to >= len(b.states) {
-		b.fillEmptyStatesTo(to)
-	}
+	b.fillEmptyStatesTo(to)
+	b.fillEmptyStatesTo(from)
 	b.states[from].transitions1 = append(b.states[from].transitions1, transitionLinked{
-		to:        b.states[to],
-		predicate: func(input rune) bool { return input == letter },
+		description: fmt.Sprintf("Matches: '%s'", string(letter)),
+		to:          b.states[to],
+		predicate:   func(input rune) bool { return input == letter },
 	})
 	return b
 }
 
 func (b *builder) AddWildTransition(from, to int) *builder {
-	if from >= len(b.states) || to >= len(b.states) {
-		b.fillEmptyStatesTo(to)
-	}
+	b.fillEmptyStatesTo(to)
+	b.fillEmptyStatesTo(from)
 	b.states[from].transitions1 = append(b.states[from].transitions1, transitionLinked{
+		description: fmt.Sprintf("Matches anything"),
 		to:        b.states[to],
 		predicate: func(input rune) bool { return true },
 	})
@@ -139,12 +158,11 @@ func (b *builder) AddWildTransition(from, to int) *builder {
 }
 
 func (b *builder) AddMachineTransition(from int, state *StateLinked) *builder {
-	if from >= len(b.states) {
-		b.fillEmptyStatesTo(from)
-	}
+	b.fillEmptyStatesTo(from)
 	for _, t := range state.transitions1 {
 		// when composing a transition, we merge the first transitions of the new state into the transition of the from state
 		b.states[from].transitions1 = append(b.states[from].transitions1, transitionLinked{
+			description: t.description,
 			to:        t.to,
 			predicate: t.predicate,
 		})
@@ -153,15 +171,12 @@ func (b *builder) AddMachineTransition(from int, state *StateLinked) *builder {
 }
 
 func (b *builder) fillEmptyStatesTo(from int) {
-	for i := len(b.states); i <= from; i++ {
-		GlobalIdCounter++
-		b.states = append(b.states, &StateLinked{id: GlobalIdCounter, stateType: Normal})
+	if from >= len(b.states) {
+		for i := len(b.states); i <= from; i++ {
+			GlobalIdCounter++
+			b.states = append(b.states, &StateLinked{id: GlobalIdCounter})
+		}
 	}
-}
-
-func (b *builder) SetSuccess(n int) *builder {
-	b.states[n].stateType = Success
-	return b
 }
 
 func (b *builder) Build() *StateLinked {

@@ -2,66 +2,120 @@ package finite_state_machine
 
 func Compile(input string) *StateLinked {
 	symbols := lex(input)
-	fragment, _ := compileFragment(symbols)
-	return fragment
+	compiler := stackCompiler{}
+	stateLinked := compiler.compile(symbols)
+	return stateLinked
 }
 
-func compileFragment(symbols []symbol) (*StateLinked, int) {
-	var branches []*StateLinked
-	builder := NewStateLinkedBuilder(len(symbols) + 1)
-	symbolCounter := 0
-	prevSymbolIndex := 1
-	Loop: for len(symbols) > 0 {
+type stackCompiler struct {
+	stack []*StateLinked
+}
+
+func (s *stackCompiler) pop() *StateLinked {
+	i := len(s.stack) - 1
+	state := s.stack[i]
+	s.stack = s.stack[:i]
+	return state
+}
+
+func (s *stackCompiler) push(linked *StateLinked) {
+	s.stack = append(s.stack, linked)
+}
+
+func (s *stackCompiler) compile(symbols []symbol) *StateLinked {
+	head := &StateLinked{
+		transitions1: nil,
+	}
+	s.push(head) // starting state
+
+	for len(symbols) > 0 {
 		symbol := symbols[0]
 		switch symbol.symbolType {
 		case LParen:
-			innerFragment, matchingParenIndex := compileFragment(symbols[1:])
-			builder.AddMachineTransition(prevSymbolIndex, innerFragment)
-			prevSymbolIndex = matchingParenIndex+1
-			symbols = symbols[prevSymbolIndex:]
+			s.push(&StateLinked{})
 		case RParen:
-			break Loop
+			s1 := s.pop()
+			s2 := s.pop()
+			s2Tail := tail(s2)
+			s2Tail.merge(s1)
+			s.push(s2)
+		// branch
 		case Pipe:
-			builder = builder.SetSuccess(prevSymbolIndex)
-			branches = append(branches, builder.Build())
-			builder = NewStateLinkedBuilder(len(symbols) + 1)
-			prevSymbolIndex = 1
-		case Wild:
-			if symbol.modifier == ZeroOrMore {
-				builder = builder.AddWildTransition(prevSymbolIndex, prevSymbolIndex)
-			} else {
-				builder = builder.AddWildTransition(prevSymbolIndex, prevSymbolIndex+1)
-				prevSymbolIndex++
-			}
+			s1 := s.pop()
+			// transition with empty 'to' will be start of new branch
+			s1.transitions1 = append([]transitionLinked{{to: nil}}, s1.transitions1...)
+			s.push(s1)
+		// concatenation
 		default:
-			builder = builder.AddTransition(prevSymbolIndex, prevSymbolIndex+1, symbol.letter)
-			prevSymbolIndex++
+			s1 := s.pop()
+			if symbol.symbolType == Character {
+				predicate := func(r rune) bool { return r == symbol.letter }
+				s.catenate(symbol, s1, predicate, "to -> "+string(symbol.letter), s1)
+			} else if symbol.symbolType == AnyCharacter {
+				predicate := func(r rune) bool { return true }
+				s.catenate(symbol, tail(s1), predicate, "to -> .", s1)
+			}
+			s.push(s1)
 		}
-		symbolCounter++
 		symbols = symbols[1:]
 	}
-	builder = builder.SetSuccess(prevSymbolIndex)
+	return head
+}
 
-	for _, b := range branches {
-		builder.AddMachineTransition(1, b)
+func (s *stackCompiler) catenate(symbol symbol, tail *StateLinked, predicate func(r rune) bool, description string, s1 *StateLinked) {
+	if symbol.modifier == ZeroOrMore {
+		tail.transitions1 = []transitionLinked{
+			{to: nil},
+			{to: tail, predicate: predicate, description: description},
+		}
+	} else {
+		// will append to end of transition chain with index 0
+		s.append(s1, &StateLinked{}, predicate, description)
+	}
+}
+
+func tail(s *StateLinked) *StateLinked {
+	head := s
+	for len(head.transitions1) > 0 && head.transitions1[0].to != nil {
+		head = head.transitions1[0].to
+	}
+	return head
+}
+
+func (s *stackCompiler) append(s1 *StateLinked, s2 *StateLinked, predicate Predicate, description string) {
+	head := s1
+	for len(head.transitions1) > 0 && head.transitions1[0].to != nil {
+		head = head.transitions1[0].to
 	}
 
-	stateLinked := builder.Build()
-	return stateLinked, symbolCounter
+	t := transitionLinked{
+		to:          s2,
+		predicate:   predicate,
+		description: description,
+	}
+
+	if head.transitions1 != nil && head.transitions1[0].to == nil {
+		head.transitions1[0] = t
+	} else {
+		head.transitions1 = append(head.transitions1, t)
+	}
 }
 
 type modifier string
+
 const (
 	ZeroOrMore modifier = "ZeroOrMore"
 )
 
 type SymbolType int
+
 const (
 	Other SymbolType = iota
-	Wild
+	AnyCharacter
 	Pipe
 	LParen
 	RParen
+	Character
 )
 
 type symbol struct {
@@ -101,10 +155,11 @@ func lexRune(r rune) symbol {
 	case ')':
 		s.symbolType = RParen
 	case '.':
-		s.symbolType = Wild
+		s.symbolType = AnyCharacter
 	case '|':
 		s.symbolType = Pipe
 	default:
+		s.symbolType = Character
 		s.letter = r
 	}
 	return s
