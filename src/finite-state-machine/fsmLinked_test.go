@@ -10,17 +10,36 @@ type fsmTest struct {
 	expectedResults []result
 }
 
-func TestLinkedDeeplyNestedCompiledMatcher(t *testing.T) {
-	// equivalent to "abcd|fg"
-	//desc := "((abcd)|(fg))"
-	desc := "(((ab)(c)d)|(fg))" // TODO: Parenthesis for catenations
-	for _, tt := range []fsmTest{
-		{"abcd", []result{{0, 3}}},
-		{"fg", []result{{0, 1}}},
-		{"abc", []result{}},
-		{"f", []result{}},
+func TestCompiledMatcher(t *testing.T) {
+	type compiledTest struct {
+		regex           string
+		input           string
+		expectedResults []result
+	}
+
+	for _, tt := range []compiledTest{
+		{regex: "a*b", input: "ab", expectedResults: []result{{0, 1}}},
+		{regex: "a*b", input: "aab", expectedResults: []result{{0, 2}}},
+		{regex: "a*b", input: "aaab", expectedResults: []result{{0, 3}}},
+		{regex: "a*b", input: "b", expectedResults: []result{{0, 0}}},
+		{regex: "a*b", input: "bb", expectedResults: []result{{0, 0}, {1, 1}}},
+		{regex: "a*b", input: "a"},
+		{regex: "a*b", input: "aa"},
 	} {
-		testCompiledMachine(t, desc, tt)
+		t.Run("character with wildcard modifier", func(t *testing.T) {
+			testCompiledMachine(t, tt.regex, fsmTest{s: tt.input, expectedResults: tt.expectedResults})
+		})
+	}
+
+	for _, tt := range []compiledTest{
+		{regex: "(((ab)(c)d)|(fg))", input: "abcd", expectedResults: []result{{0, 3}}},
+		{regex: "(((ab)(c)d)|(fg))", input: "fg", expectedResults: []result{{0, 1}}},
+		{regex: "(((ab)(c)d)|(fg))", input: "abc"},
+		{regex: "(((ab)(c)d)|(fg))", input: "f"},
+	} {
+		t.Run("deeply nested catenation", func(t *testing.T) {
+			testCompiledMachine(t, tt.regex, fsmTest{s: tt.input, expectedResults: tt.expectedResults})
+		})
 	}
 }
 
@@ -147,27 +166,6 @@ func TestLinkedAnyCharacterMatcher(t *testing.T) {
 	} {
 		testMachine(t, desc, tt, m)
 		testCompiledMachine(t, desc, tt)
-	}
-}
-
-func TestCompiledMatcher(t *testing.T) {
-	for _, tt := range []struct {
-		regex           string
-		input           string
-		expectedResults []result
-	}{
-		{"a*b", "ab", []result{{0, 1}}},
-		{"a*b", "aab", []result{{0, 2}}},
-		{"a*b", "aaab", []result{{0, 3}}},
-		{"a*b", "b", []result{{0, 0}}},
-		{"a*b", "bb", []result{{0, 0}, {1,1}}},
-		{"a*b", "a", []result{}},
-		{"a*b", "aa", []result{}},
-		{"a*b", "", []result{}},
-	} {
-		t.Run("character with wildcard modifier", func(t *testing.T) {
-			testCompiledMachine(t, tt.regex, fsmTest{s: tt.input, expectedResults: tt.expectedResults})
-		})
 	}
 }
 
