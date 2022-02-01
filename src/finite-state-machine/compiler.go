@@ -46,66 +46,70 @@ func (s *stackCompiler) compile(symbols []symbol) *StateLinked {
 			s1.transitions1 = append([]transitionLinked{{to: nil}}, s1.transitions1...)
 			s.push(s1)
 		// concatenation
-		default:
+		case Character:
 			s1 := s.pop()
-			if symbol.symbolType == Character {
-				predicate := func(r rune) bool { return r == symbol.letter }
-				s.catenate(symbol, s1, predicate, "to -> "+string(symbol.letter), s1)
-			} else if symbol.symbolType == AnyCharacter {
-				predicate := func(r rune) bool { return true }
-				s.catenate(symbol, tail(s1), predicate, "to -> .", s1)
-			}
+			s.append(tail(s1), &StateLinked{}, func(r rune) bool { return r == symbol.letter }, "to -> "+string(symbol.letter))
 			s.push(s1)
+		case AnyCharacter:
+			s1 := s.pop()
+			s.append(tail(s1), &StateLinked{}, func(r rune) bool { return true }, "to -> .")
+			s.push(s1)
+		case ZeroOrMore:
+			// (1) -x-> (2) - we start with a simple starting state and a condition to transfer to state(2) on an 'x'
+			//
+			// becomes:
+			//
+			// (1) -> (2)   - the starting state now unconditionally goes to the next state, as there may be 0 'x's
+			//    <-x       - the old condition is used for the recursive loop, as there may be many 'x's
+
+			s1 := s.pop()
+			// make a tail of s1 with a loop to itself
+			oneBeforeTail := tailN(s1, 1)
+			oneBeforeTail.transitions1[0].to = oneBeforeTail
+			// make sure the main branch is nil
+			oneBeforeTail.transitions1 = append([]transitionLinked{{to: nil}}, oneBeforeTail.transitions1...)
+			s.push(s1)
+		default:
+			continue
 		}
 		symbols = symbols[1:]
 	}
 	return head
 }
 
-func (s *stackCompiler) catenate(symbol symbol, tail *StateLinked, predicate func(r rune) bool, description string, s1 *StateLinked) {
-	if symbol.modifier == ZeroOrMore {
-		tail.transitions1 = []transitionLinked{
-			{to: nil},
-			{to: tail, predicate: predicate, description: description},
-		}
-	} else {
-		// will append to end of transition chain with index 0
-		s.append(s1, &StateLinked{}, predicate, description)
-	}
+func tail(s *StateLinked) *StateLinked {
+	return tailN(s, 0)
 }
 
-func tail(s *StateLinked) *StateLinked {
+func tailN(s *StateLinked, lag int) *StateLinked {
 	head := s
+	behind := s
 	for len(head.transitions1) > 0 && head.transitions1[0].to != nil {
 		head = head.transitions1[0].to
+		if lag > 0 {
+			lag--
+		} else {
+			behind = behind.transitions1[0].to
+		}
 	}
-	return head
+	return behind
 }
 
 func (s *stackCompiler) append(s1 *StateLinked, s2 *StateLinked, predicate Predicate, description string) {
-	head := s1
-	for len(head.transitions1) > 0 && head.transitions1[0].to != nil {
-		head = head.transitions1[0].to
-	}
-
 	t := transitionLinked{
 		to:          s2,
 		predicate:   predicate,
 		description: description,
 	}
 
-	if head.transitions1 != nil && head.transitions1[0].to == nil {
-		head.transitions1[0] = t
+	if s1.transitions1 != nil && s1.transitions1[0].to == nil {
+		s1.transitions1[0] = t
 	} else {
-		head.transitions1 = append(head.transitions1, t)
+		s1.transitions1 = append(s1.transitions1, t)
 	}
 }
 
 type modifier string
-
-const (
-	ZeroOrMore modifier = "ZeroOrMore"
-)
 
 type SymbolType int
 
@@ -116,6 +120,7 @@ const (
 	LParen
 	RParen
 	Character
+	ZeroOrMore
 )
 
 type symbol struct {
@@ -158,6 +163,8 @@ func lexRune(r rune) symbol {
 		s.symbolType = AnyCharacter
 	case '|':
 		s.symbolType = Pipe
+	case '*':
+		s.symbolType = ZeroOrMore
 	default:
 		s.symbolType = Character
 		s.letter = r
@@ -167,12 +174,12 @@ func lexRune(r rune) symbol {
 
 func lexRuneWithModifier(r rune, mod rune) symbol {
 	s := lexRune(r)
-	if mod == '*' {
-		s.modifier = ZeroOrMore
-	}
+	//if mod == '*' {
+	//	s.modifier = ZeroOrMore
+	//}
 	return s
 }
 
 func isModifier(r rune) bool {
-	return r == '*'
+	return false
 }

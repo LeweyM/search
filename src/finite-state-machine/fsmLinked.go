@@ -30,7 +30,17 @@ func (s *StateLinked) matchingTransitions(input rune) []destination {
 }
 
 func (s *StateLinked) isSuccessState() bool {
-	return len(s.transitions1) == 0
+	if len(s.transitions1) == 0 {
+		return true
+	} else {
+		// not efficient
+		for _, linked := range s.transitions1 {
+			if linked.to == nil {
+				return true
+			}
+		}
+		return false
+	}
 }
 
 func (s *StateLinked) merge(s2 *StateLinked) {
@@ -41,8 +51,8 @@ func (s *StateLinked) merge(s2 *StateLinked) {
 		// when composing a transition, we merge the first transitions of the new state into the transition of the from state
 		s.transitions1 = append(s.transitions1, transitionLinked{
 			description: t.description,
-			to:        t.to,
-			predicate: t.predicate,
+			to:          t.to,
+			predicate:   t.predicate,
 		})
 	}
 }
@@ -151,8 +161,8 @@ func (b *builder) AddWildTransition(from, to int) *builder {
 	b.fillEmptyStatesTo(from)
 	b.states[from].transitions1 = append(b.states[from].transitions1, transitionLinked{
 		description: fmt.Sprintf("Matches anything"),
-		to:        b.states[to],
-		predicate: func(input rune) bool { return true },
+		to:          b.states[to],
+		predicate:   func(input rune) bool { return true },
 	})
 	return b
 }
@@ -163,8 +173,8 @@ func (b *builder) AddMachineTransition(from int, state *StateLinked) *builder {
 		// when composing a transition, we merge the first transitions of the new state into the transition of the from state
 		b.states[from].transitions1 = append(b.states[from].transitions1, transitionLinked{
 			description: t.description,
-			to:        t.to,
-			predicate: t.predicate,
+			to:          t.to,
+			predicate:   t.predicate,
 		})
 	}
 	return b
