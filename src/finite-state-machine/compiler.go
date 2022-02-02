@@ -89,6 +89,15 @@ func (s *stackCompiler) compile(symbols []symbol) *StateLinked {
 			// make sure the main branch is nil
 			oneBeforeTail.transitions1 = append([]transitionLinked{{to: nil}}, oneBeforeTail.transitions1...)
 			s.push(s1)
+		case OneOrMore:
+			// (1) -a-> (2)				-- from a simple starting state
+			// (1) -a-> (2) <-a- 		-- to a simple concatenation but with a recursive self definition
+			s1 := s.pop()
+			// grab the transition leading to the tail state. That is, grab the first transition from tail - 1.
+			leadingTransition := tailN(s1, 1).transitions1[0]
+			// copy that transition to a secondary branch on the tail
+			tail(s1).transitions1 = append([]transitionLinked{{to: nil}}, leadingTransition)
+			s.push(s1)
 		}
 		symbols = symbols[1:]
 	}
@@ -136,6 +145,7 @@ const (
 	RParen
 	Character
 	ZeroOrMore
+	OneOrMore
 )
 
 type symbol struct {
@@ -166,6 +176,8 @@ func lexRune(r rune) symbol {
 		s.symbolType = Pipe
 	case '*':
 		s.symbolType = ZeroOrMore
+	case '+':
+		s.symbolType = OneOrMore
 	default:
 		s.symbolType = Character
 		s.letter = r

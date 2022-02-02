@@ -69,6 +69,26 @@ func TestCompiledMatcher(t *testing.T) {
 			testCompiledMachine(t, tt.regex, fsmTest{s: tt.input, expectedResults: tt.expectedResults})
 		}
 	})
+
+	t.Run("character with one or more modifier", func(t *testing.T) {
+		for _, tt := range []compiledTest{
+			// 1) -a-> (2) <-a- -b-> (3!)
+			{regex: "a+b", input: "ab", expectedResults: []result{{0, 1}}},
+			{regex: "a+b", input: "aab", expectedResults: []result{{0, 2}}},
+			{regex: "a+b", input: "aaab", expectedResults: []result{{0, 3}}},
+			{regex: "a+b", input: "aazb"},
+			{regex: "a+b", input: "a"},
+			{regex: "a+b", input: "b"},
+
+			{regex: "xy+", input: "x"},
+			{regex: "xy+", input: "y"},
+			{regex: "xy+", input: "xy", expectedResults: []result{{0, 1}}},
+			{regex: "xy+", input: "xyxy", expectedResults: []result{{0, 1}, {2, 3}}},
+			{regex: "xy+", input: "xyyy", expectedResults: []result{{0, 1}}}, // too greedy, will grab the first match which is (0,1) instead of (0,3)
+		} {
+			testCompiledMachine(t, tt.regex, fsmTest{s: tt.input, expectedResults: tt.expectedResults})
+		}
+	})
 }
 
 // Overlapping branches can be reduced to single matching branches.
