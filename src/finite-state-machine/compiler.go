@@ -68,7 +68,15 @@ func (s *stackCompiler) compile(symbols []symbol) *StateLinked {
 		// concatenation
 		case Character:
 			s1 := s.pop()
-			s.append(tail(s1), &StateLinked{}, func(r rune) bool { return r == symbol.letter }, "to -> "+string(symbol.letter))
+			s2 := &StateLinked{}
+			s2Tail := tail(s1)
+			// Pretty hacky solution. The idea is that if main branch is nil, check the secondary branch for a transition.
+			// Use that transition if it is available in order to merge branches in ZeroOrOne case.
+			// This probably introduces bugs.
+			if len(s2Tail.transitions1) > 1 && s2Tail.transitions1[0].to == nil && s2Tail.transitions1[1].to != nil {
+				s2 = s2Tail.transitions1[1].to
+			}
+			s.append(s2Tail, s2, func(r rune) bool { return r == symbol.letter }, "to -> "+string(symbol.letter))
 			s.push(s1)
 		case AnyCharacter:
 			s1 := s.pop()
@@ -97,6 +105,16 @@ func (s *stackCompiler) compile(symbols []symbol) *StateLinked {
 			leadingTransition := tailN(s1, 1).transitions1[0]
 			// copy that transition to a secondary branch on the tail
 			tail(s1).transitions1 = append([]transitionLinked{{to: nil}}, leadingTransition)
+			s.push(s1)
+		case ZeroOrOne:
+			// (1) -a-> (2)				-- from a simple starting state
+			// (1) -n-> (2)
+			//     -a->					-- allow the main branch to jump directly to state 2, while keeping original transition on main branch
+			s1 := s.pop()
+			// grab the transition leading to the tail state. That is, grab the first transition from tail - 1.
+			leadingTransition := tailN(s1, 1).transitions1[0]
+			// copy that transition to a secondary branch on the tail
+			tailN(s1, 1).transitions1 = append([]transitionLinked{{to: nil}}, leadingTransition)
 			s.push(s1)
 		}
 		symbols = symbols[1:]
@@ -146,6 +164,7 @@ const (
 	Character
 	ZeroOrMore
 	OneOrMore
+	ZeroOrOne
 )
 
 type symbol struct {
@@ -178,6 +197,8 @@ func lexRune(r rune) symbol {
 		s.symbolType = ZeroOrMore
 	case '+':
 		s.symbolType = OneOrMore
+	case '?':
+		s.symbolType = ZeroOrOne
 	default:
 		s.symbolType = Character
 		s.letter = r
