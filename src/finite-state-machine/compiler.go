@@ -34,10 +34,30 @@ func (s *stackCompiler) compile(symbols []symbol) *StateLinked {
 		case LParen:
 			s.push(&StateLinked{})
 		case RParen:
+			// s1 (1) -a-> (2) -b-> (3)     -- main branch being processed inside the parens
+			// s2 (4) -x-> (5)              -- outer branch which has been pushed to the stack
+			//
+			// becomes
+			//
+			// (4) -x-> (5/1) -a-> (2) -b-> (3)  -- the end of 2nd branch is merged with beginning of 1st branch
+
 			s1 := s.pop()
 			s2 := s.pop()
 			s2Tail := tail(s2)
 			s2Tail.merge(s1)
+			// peek ahead
+			if len(symbols) > 1 && symbols[1].symbolType == ZeroOrMore {
+				// s1 (1) -a-> (2) -b-> (3)     -- main branch being processed inside the parens
+				// s2 (4) -x-> (5)              -- outer branch which has been pushed to the stack
+				//
+				// becomes
+				//
+				// (4) -x-> (5/1) -a-> (2) -b-> (3)  -- the end of 2nd branch is merged with beginning of 1st branch
+				//                ------------>      -- unconditional direct path to end state if 0 (ab)s
+				//								     -- ? should there be a recursive path back also? It will not be rung as it is greedy however...
+				s2Tail.transitions1 = append(s2Tail.transitions1, transitionLinked{to: tail(s1), predicate: func(input rune) bool { return true }, description: "to -> ."})
+				symbols = symbols[1:]
+			}
 			s.push(s2)
 		// branch
 		case Pipe:
@@ -69,8 +89,6 @@ func (s *stackCompiler) compile(symbols []symbol) *StateLinked {
 			// make sure the main branch is nil
 			oneBeforeTail.transitions1 = append([]transitionLinked{{to: nil}}, oneBeforeTail.transitions1...)
 			s.push(s1)
-		default:
-			continue
 		}
 		symbols = symbols[1:]
 	}
@@ -109,13 +127,10 @@ func (s *stackCompiler) append(s1 *StateLinked, s2 *StateLinked, predicate Predi
 	}
 }
 
-type modifier string
-
 type SymbolType int
 
 const (
-	Other SymbolType = iota
-	AnyCharacter
+	AnyCharacter SymbolType = iota
 	Pipe
 	LParen
 	RParen
@@ -126,28 +141,14 @@ const (
 type symbol struct {
 	symbolType SymbolType
 	letter     rune
-	modifier   modifier
 }
 
 func lex(input string) []symbol {
 	var symbols []symbol
 	i := 0
 	for i < len(input) {
-		curr := rune(input[i])
-		hasNext := i+1 < len(input)
-		if hasNext {
-			next := rune(input[i+1])
-			if isModifier(next) {
-				symbols = append(symbols, lexRuneWithModifier(curr, next))
-				i += 2
-			} else {
-				symbols = append(symbols, lexRune(curr))
-				i += 1
-			}
-		} else {
-			symbols = append(symbols, lexRune(curr))
-			i++
-		}
+		symbols = append(symbols, lexRune(rune(input[i])))
+		i++
 	}
 	return symbols
 }
@@ -170,16 +171,4 @@ func lexRune(r rune) symbol {
 		s.letter = r
 	}
 	return s
-}
-
-func lexRuneWithModifier(r rune, mod rune) symbol {
-	s := lexRune(r)
-	//if mod == '*' {
-	//	s.modifier = ZeroOrMore
-	//}
-	return s
-}
-
-func isModifier(r rune) bool {
-	return false
 }

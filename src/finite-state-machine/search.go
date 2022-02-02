@@ -14,7 +14,7 @@ func FindAll(finiteStateMachine Machine, searchString string) []result {
 
 	start := 0
 	end := 0
-	runes := []rune(searchString)
+	runes := append([]rune(searchString), 0) // we add a 'NULL' 0 rune at the end so that even empty string inputs are processed.
 	hasRerunFail := false
 	for end < len(runes) {
 		char := runes[end]
