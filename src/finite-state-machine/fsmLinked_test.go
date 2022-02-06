@@ -10,99 +10,93 @@ type fsmTest struct {
 	expectedResults []result
 }
 
-func TestCompiledMatcher(t *testing.T) {
-	type compiledTest struct {
-		regex           string
-		input           string
-		expectedResults []result
+type compiledTest struct {
+	regex           string
+	input           string
+	expectedResults []result
+}
+
+func TestCharacterwithwildcardmodifier(t *testing.T) {
+	for _, tt := range []compiledTest{
+		// (1) <-a- -b-> (2!)
+		{regex: "a*b", input: "ab", expectedResults: []result{{0, 1}}},
+		{regex: "a*b", input: "aab", expectedResults: []result{{0, 2}}},
+		{regex: "a*b", input: "aaab", expectedResults: []result{{0, 3}}},
+		{regex: "a*b", input: "b", expectedResults: []result{{0, 0}}},
+		{regex: "a*b", input: "bb", expectedResults: []result{{0, 0}, {1, 1}}},
+		{regex: "a*b", input: "a"},
+		{regex: "a*b", input: "aa"},
+		{regex: "abc*", input: "ab", expectedResults: []result{{0, 1}}},
+		{regex: "abc*", input: "abc", expectedResults: []result{{0, 1}}},  // don't match full string as they are greedy
+		{regex: "abc*", input: "abcc", expectedResults: []result{{0, 1}}}, // don't match full string as they are greedy
+	} {
+		testCompiledMachine(t, tt.regex, fsmTest{s: tt.input, expectedResults: tt.expectedResults})
+	}
+}
+func TestDeeplynestedcatenation(t *testing.T) {
+	for _, tt := range []compiledTest{
+		{regex: "(((ab)(c)d)|(fg))", input: "abcd", expectedResults: []result{{0, 3}}},
+		{regex: "(((ab)(c)d)|(fg))", input: "fg", expectedResults: []result{{0, 1}}},
+		{regex: "(((ab)(c)d)|(fg))", input: "abc"},
+		{regex: "(((ab)(c)d)|(fg))", input: "f"},
+	} {
+		testCompiledMachine(t, tt.regex, fsmTest{s: tt.input, expectedResults: tt.expectedResults})
+	}
+}
+func TestMultiplepipebranches(t *testing.T) {
+	for _, tt := range []compiledTest{
+		{regex: "abc|def|xyz", input: "abc", expectedResults: []result{{0, 2}}},
+		{regex: "abc|def|xyz", input: "def", expectedResults: []result{{0, 2}}},
+		{regex: "abc|def|xyz", input: "xyz", expectedResults: []result{{0, 2}}},
+		{regex: "abc|abx|aby|abz", input: "abz", expectedResults: []result{{0, 2}}},
+		{regex: "abc|abx|aby|abz", input: "abc", expectedResults: []result{{0, 2}}},
+		{regex: "abc|abx|aby|abz", input: "abr", expectedResults: []result{}},
+	} {
+		testCompiledMachine(t, tt.regex, fsmTest{s: tt.input, expectedResults: tt.expectedResults})
+	}
+}
+func TestZeroormoreofagroup(t *testing.T) {
+	for _, tt := range []compiledTest{
+		{regex: "(ab)*", input: "", expectedResults: []result{{0, 0}}},
+		{regex: "(ab)*", input: "ab", expectedResults: []result{{0, 0}, {1, 1}, {2, 2}}},                   // too greedy for interesting results
+		{regex: "(ab)*", input: "abab", expectedResults: []result{{0, 0}, {1, 1}, {2, 2}, {3, 3}, {4, 4}}}, // too greedy for interesting results
+	} {
+		testCompiledMachine(t, tt.regex, fsmTest{s: tt.input, expectedResults: tt.expectedResults})
 	}
 
-	t.Run("character with wildcard modifier", func(t *testing.T) {
-		for _, tt := range []compiledTest{
-			// (1) <-a- -b-> (2!)
-			{regex: "a*b", input: "ab", expectedResults: []result{{0, 1}}},
-			{regex: "a*b", input: "aab", expectedResults: []result{{0, 2}}},
-			{regex: "a*b", input: "aaab", expectedResults: []result{{0, 3}}},
-			{regex: "a*b", input: "b", expectedResults: []result{{0, 0}}},
-			{regex: "a*b", input: "bb", expectedResults: []result{{0, 0}, {1, 1}}},
-			{regex: "a*b", input: "a"},
-			{regex: "a*b", input: "aa"},
-			{regex: "abc*", input: "ab", expectedResults: []result{{0, 1}}},
-			{regex: "abc*", input: "abc", expectedResults: []result{{0, 1}}},  // don't match full string as they are greedy
-			{regex: "abc*", input: "abcc", expectedResults: []result{{0, 1}}}, // don't match full string as they are greedy
-		} {
-			testCompiledMachine(t, tt.regex, fsmTest{s: tt.input, expectedResults: tt.expectedResults})
-		}
-	})
+}
+func TestCharacterwithoneormoremodifier(t *testing.T) {
+	for _, tt := range []compiledTest{
+		// 1) -a-> (2) <-a- -b-> (3!)
+		{regex: "a+b", input: "ab", expectedResults: []result{{0, 1}}},
+		{regex: "a+b", input: "aab", expectedResults: []result{{0, 2}}},
+		{regex: "a+b", input: "aaab", expectedResults: []result{{0, 3}}},
+		{regex: "a+b", input: "aazb"},
+		{regex: "a+b", input: "a"},
+		{regex: "a+b", input: "b"},
 
-	t.Run("deeply nested catenation", func(t *testing.T) {
-		for _, tt := range []compiledTest{
-			{regex: "(((ab)(c)d)|(fg))", input: "abcd", expectedResults: []result{{0, 3}}},
-			{regex: "(((ab)(c)d)|(fg))", input: "fg", expectedResults: []result{{0, 1}}},
-			{regex: "(((ab)(c)d)|(fg))", input: "abc"},
-			{regex: "(((ab)(c)d)|(fg))", input: "f"},
-		} {
-			testCompiledMachine(t, tt.regex, fsmTest{s: tt.input, expectedResults: tt.expectedResults})
-		}
-	})
+		{regex: "xy+", input: "x"},
+		{regex: "xy+", input: "y"},
+		{regex: "xy+", input: "xy", expectedResults: []result{{0, 1}}},
+		{regex: "xy+", input: "xyxy", expectedResults: []result{{0, 1}, {2, 3}}},
+		{regex: "xy+", input: "xyyy", expectedResults: []result{{0, 1}}}, // too greedy, will grab the first match which is (0,1) instead of (0,3)
+	} {
+		testCompiledMachine(t, tt.regex, fsmTest{s: tt.input, expectedResults: tt.expectedResults})
+	}
 
-	t.Run("multiple pipe branches", func(t *testing.T) {
-		for _, tt := range []compiledTest{
-			{regex: "abc|def|xyz", input: "abc", expectedResults: []result{{0, 2}}},
-			{regex: "abc|def|xyz", input: "def", expectedResults: []result{{0, 2}}},
-			{regex: "abc|def|xyz", input: "xyz", expectedResults: []result{{0, 2}}},
-			{regex: "abc|abx|aby|abz", input: "abz", expectedResults: []result{{0, 2}}},
-			{regex: "abc|abx|aby|abz", input: "abc", expectedResults: []result{{0, 2}}},
-			{regex: "abc|abx|aby|abz", input: "abr", expectedResults: []result{}},
-		} {
-			testCompiledMachine(t, tt.regex, fsmTest{s: tt.input, expectedResults: tt.expectedResults})
-		}
-	})
+}
+func TestCharacterWithZeroOrOneModifier(t *testing.T) {
+	for _, tt := range []compiledTest{
+		//
+		{regex: "a?b", input: "ab", expectedResults: []result{{0, 1}}},
+		{regex: "a?b", input: "b", expectedResults: []result{{0, 0}}},
+		{regex: "a?b", input: "a"},
 
-	t.Run("zero or more of a group", func(t *testing.T) {
-		//t.SkipNow()
-		for _, tt := range []compiledTest{
-			{regex: "(ab)*", input: "", expectedResults: []result{{0, 0}}},
-			{regex: "(ab)*", input: "ab", expectedResults: []result{{0, 0}, {1, 1}, {2, 2}}},                   // too greedy for interesting results
-			{regex: "(ab)*", input: "abab", expectedResults: []result{{0, 0}, {1, 1}, {2, 2}, {3, 3}, {4, 4}}}, // too greedy for interesting results
-		} {
-			testCompiledMachine(t, tt.regex, fsmTest{s: tt.input, expectedResults: tt.expectedResults})
-		}
-	})
-
-	t.Run("character with one or more modifier", func(t *testing.T) {
-		for _, tt := range []compiledTest{
-			// 1) -a-> (2) <-a- -b-> (3!)
-			{regex: "a+b", input: "ab", expectedResults: []result{{0, 1}}},
-			{regex: "a+b", input: "aab", expectedResults: []result{{0, 2}}},
-			{regex: "a+b", input: "aaab", expectedResults: []result{{0, 3}}},
-			{regex: "a+b", input: "aazb"},
-			{regex: "a+b", input: "a"},
-			{regex: "a+b", input: "b"},
-
-			{regex: "xy+", input: "x"},
-			{regex: "xy+", input: "y"},
-			{regex: "xy+", input: "xy", expectedResults: []result{{0, 1}}},
-			{regex: "xy+", input: "xyxy", expectedResults: []result{{0, 1}, {2, 3}}},
-			{regex: "xy+", input: "xyyy", expectedResults: []result{{0, 1}}}, // too greedy, will grab the first match which is (0,1) instead of (0,3)
-		} {
-			testCompiledMachine(t, tt.regex, fsmTest{s: tt.input, expectedResults: tt.expectedResults})
-		}
-	})
-
-	t.Run("character with zero or one modifier", func(t *testing.T) {
-		for _, tt := range []compiledTest{
-			//
-			{regex: "a?b", input: "ab", expectedResults: []result{{0, 0}, {1, 1}}}, // too greedy
-			{regex: "a?b", input: "b", expectedResults: []result{{0, 0}}},
-			{regex: "a?b", input: "a"},
-
-			{regex: "cats?", input: "cat", expectedResults: []result{{0, 2}}},
-			{regex: "cats?", input: "cats", expectedResults: []result{{0, 3}}}, // too greedy
-		} {
-			testCompiledMachine(t, tt.regex, fsmTest{s: tt.input, expectedResults: tt.expectedResults})
-		}
-	})
+		{regex: "cats?", input: "cat", expectedResults: []result{{0, 2}}},
+		{regex: "cats?", input: "cats", expectedResults: []result{{0, 2}}}, // too greedy
+	} {
+		testCompiledMachine(t, tt.regex, fsmTest{s: tt.input, expectedResults: tt.expectedResults})
+	}
 }
 
 // Overlapping branches can be reduced to single matching branches.

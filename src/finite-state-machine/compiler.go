@@ -63,20 +63,14 @@ func (s *stackCompiler) compile(symbols []symbol) *StateLinked {
 		case Pipe:
 			s1 := s.pop()
 			// transition with empty 'to' will be start of new branch
-			s1.transitions1 = append([]transitionLinked{{to: nil}}, s1.transitions1...)
+			s1.transitions1 = append([]transitionLinked{{to: &StateLinked{empty: true}}}, s1.transitions1...)
 			s.push(s1)
 		// concatenation
 		case Character:
 			s1 := s.pop()
-			s2 := &StateLinked{}
 			s2Tail := tail(s1)
-			// Pretty hacky solution. The idea is that if main branch is nil, check the secondary branch for a transition.
-			// Use that transition if it is available in order to merge branches in ZeroOrOne case.
-			// This probably introduces bugs.
-			if len(s2Tail.transitions1) > 1 && s2Tail.transitions1[0].to == nil && s2Tail.transitions1[1].to != nil {
-				s2 = s2Tail.transitions1[1].to
-			}
-			s.append(s2Tail, s2, func(r rune) bool { return r == symbol.letter }, "to -> "+string(symbol.letter))
+			next := &StateLinked{}
+			s.append(s2Tail, next, func(r rune) bool { return r == symbol.letter }, "to -> "+string(symbol.letter))
 			s.push(s1)
 		case AnyCharacter:
 			s1 := s.pop()
@@ -89,13 +83,12 @@ func (s *stackCompiler) compile(symbols []symbol) *StateLinked {
 			//
 			// (1) -> (2)   - the starting state now unconditionally goes to the next state, as there may be 0 'x's
 			//    <-x       - the old condition is used for the recursive loop, as there may be many 'x's
-
 			s1 := s.pop()
 			// make a tail of s1 with a loop to itself
 			oneBeforeTail := tailN(s1, 1)
 			oneBeforeTail.transitions1[0].to = oneBeforeTail
 			// make sure the main branch is nil
-			oneBeforeTail.transitions1 = append([]transitionLinked{{to: nil}}, oneBeforeTail.transitions1...)
+			oneBeforeTail.transitions1 = append([]transitionLinked{{to: &StateLinked{empty: true}}}, oneBeforeTail.transitions1...)
 			s.push(s1)
 		case OneOrMore:
 			// (1) -a-> (2)				-- from a simple starting state
@@ -104,17 +97,16 @@ func (s *stackCompiler) compile(symbols []symbol) *StateLinked {
 			// grab the transition leading to the tail state. That is, grab the first transition from tail - 1.
 			leadingTransition := tailN(s1, 1).transitions1[0]
 			// copy that transition to a secondary branch on the tail
-			tail(s1).transitions1 = append([]transitionLinked{{to: nil}}, leadingTransition)
+			tail(s1).transitions1 = append([]transitionLinked{{to: &StateLinked{empty: true}}}, leadingTransition)
 			s.push(s1)
 		case ZeroOrOne:
 			// (1) -a-> (2)				-- from a simple starting state
-			// (1) -n-> (2)
-			//     -a->					-- allow the main branch to jump directly to state 2, while keeping original transition on main branch
+			// (1) -E-> (2)
+			//     -a->					-- add an epsilon transition to state 2
 			s1 := s.pop()
-			// grab the transition leading to the tail state. That is, grab the first transition from tail - 1.
-			leadingTransition := tailN(s1, 1).transitions1[0]
-			// copy that transition to a secondary branch on the tail
-			tailN(s1, 1).transitions1 = append([]transitionLinked{{to: nil}}, leadingTransition)
+			tail1 := tailN(s1, 1)
+			epsilon := transitionLinked{to: tail(s1), predicate: func(r rune) bool { return true }, description: "epsilon", epsilon: true}
+			tail1.transitions1 = append(tail1.transitions1, epsilon)
 			s.push(s1)
 		}
 		symbols = symbols[1:]
@@ -129,7 +121,7 @@ func tail(s *StateLinked) *StateLinked {
 func tailN(s *StateLinked, lag int) *StateLinked {
 	head := s
 	behind := s
-	for len(head.transitions1) > 0 && head.transitions1[0].to != nil {
+	for len(head.transitions1) > 0 && !head.transitions1[0].to.empty {
 		head = head.transitions1[0].to
 		if lag > 0 {
 			lag--
@@ -147,7 +139,7 @@ func (s *stackCompiler) append(s1 *StateLinked, s2 *StateLinked, predicate Predi
 		description: description,
 	}
 
-	if s1.transitions1 != nil && s1.transitions1[0].to == nil {
+	if len(s1.transitions1) > 0 && s1.transitions1[0].to.empty {
 		s1.transitions1[0] = t
 	} else {
 		s1.transitions1 = append(s1.transitions1, t)
@@ -165,6 +157,8 @@ const (
 	ZeroOrMore
 	OneOrMore
 	ZeroOrOne
+	BOF
+	EOF
 )
 
 type symbol struct {
