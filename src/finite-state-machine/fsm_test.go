@@ -37,15 +37,15 @@ func TestOverlappingBranchMatcher(t *testing.T) {
 
 	for _, tt := range []struct {
 		s               string
-		expectedResults []result
+		expectedResults []localResult
 	}{
-		{"dog", []result{{0, 2}}},
-		{"dot", []result{{0, 2}}},
-		{"dox", []result{}},
-		{"doxdog", []result{{3, 5}}},
-		{"doxdot", []result{{3, 5}}},
-		{"dodot", []result{{2, 4}}},
-		{"dodog", []result{{2, 4}}},
+		{"dog", []localResult{{0, 2}}},
+		{"dot", []localResult{{0, 2}}},
+		{"dox", []localResult{}},
+		{"doxdog", []localResult{{3, 5}}},
+		{"doxdot", []localResult{{3, 5}}},
+		{"dodot", []localResult{{2, 4}}},
+		{"dodog", []localResult{{2, 4}}},
 	} {
 		t.Run(fmt.Sprintf("FindAll for '%s' in string '%s'", desc, tt.s), func(t *testing.T) {
 			m.Reset()
@@ -67,11 +67,11 @@ func TestBranchMatcher(t *testing.T) {
 
 	for _, tt := range []struct {
 		s               string
-		expectedResults []result
+		expectedResults []localResult
 	}{
-		{"abc", []result{{0, 2}}},
-		{"ade", []result{{0, 2}}},
-		{"abd", []result{}},
+		{"abc", []localResult{{0, 2}}},
+		{"ade", []localResult{{0, 2}}},
+		{"abd", []localResult{}},
 	} {
 		t.Run(fmt.Sprintf("FindAll for '%s' in string '%s'", desc, tt.s), func(t *testing.T) {
 			m.Reset()
@@ -91,13 +91,13 @@ func TestWildcardMatcher(t *testing.T) {
 
 	for _, tt := range []struct {
 		s               string
-		expectedResults []result
+		expectedResults []localResult
 	}{
-		{"azzzb", []result{{0, 4}}},
-		{"azzz", []result{}},
-		{"ba", []result{}},
-		{"aaaabbbb", []result{{0, 4}}},
-		{"ababaccb", []result{{0, 1}, {2, 3}, {4, 7}}},
+		{"azzzb", []localResult{{0, 4}}},
+		{"azzz", []localResult{}},
+		{"ba", []localResult{}},
+		{"aaaabbbb", []localResult{{0, 4}}},
+		{"ababaccb", []localResult{{0, 1}, {2, 3}, {4, 7}}},
 	} {
 		t.Run(fmt.Sprintf("FindAll for '%s' in string '%s'", desc, tt.s), func(t *testing.T) {
 			m.Reset()
@@ -110,43 +110,43 @@ func TestFsm(t *testing.T) {
 	for _, tt := range []struct {
 		s                  string
 		finiteStateMachine fsMachine
-		expectedResults    []result
+		expectedResults    []localResult
 	}{
 		// notice it does not recognize overlapping matches. E.g. "AAAaaa" & "aAAAaa" & "aaAAAa" & "aaaAAA". Only "AAAaaa" and "aaaAAA" are recognized.
 		{
 			s:                  "aaaaaa",
 			finiteStateMachine: aaaMatcher(),
-			expectedResults:    []result{{0, 2}, {3, 5}},
+			expectedResults:    []localResult{{0, 2}, {3, 5}},
 		},
 		{
 			s:                  "abaaa",
 			finiteStateMachine: aaaMatcher(),
-			expectedResults:    []result{{2, 4}},
+			expectedResults:    []localResult{{2, 4}},
 		},
 		{
 			s:                  "ab",
 			finiteStateMachine: abcMatcher(),
-			expectedResults:    []result{},
+			expectedResults:    []localResult{},
 		}, {
 			s:                  "abcdefg",
 			finiteStateMachine: abcMatcher(),
-			expectedResults:    []result{{0, 2}},
+			expectedResults:    []localResult{{0, 2}},
 		}, {
 			s:                  "abcabc",
 			finiteStateMachine: abcMatcher(),
-			expectedResults:    []result{{0, 2}, {3, 5}},
+			expectedResults:    []localResult{{0, 2}, {3, 5}},
 		}, {
 			s:                  "abcdefg",
 			finiteStateMachine: cMatcher(),
-			expectedResults:    []result{{2, 2}},
+			expectedResults:    []localResult{{2, 2}},
 		}, {
 			s:                  "ccc",
 			finiteStateMachine: cMatcher(),
-			expectedResults:    []result{{0, 0}, {1, 1}, {2, 2}},
+			expectedResults:    []localResult{{0, 0}, {1, 1}, {2, 2}},
 		}, {
 			s:                  "abd",
 			finiteStateMachine: cMatcher(),
-			expectedResults:    []result{},
+			expectedResults:    []localResult{},
 		},
 	} {
 		t.Run(fmt.Sprintf("FindAll for %s in string '%s'", tt.finiteStateMachine.description, tt.s), func(t *testing.T) {
@@ -155,7 +155,7 @@ func TestFsm(t *testing.T) {
 	}
 }
 
-func testFindAll(t *testing.T, s string, finiteStateMachine Machine, expectedResults []result) {
+func testFindAll(t *testing.T, s string, finiteStateMachine Machine, expectedResults []localResult) {
 	results := FindAll(finiteStateMachine, s)
 
 	if len(results) != len(expectedResults) {
@@ -164,7 +164,7 @@ func testFindAll(t *testing.T, s string, finiteStateMachine Machine, expectedRes
 
 	for j := range results {
 		if results[j] != expectedResults[j] {
-			t.Fatalf("wrong result for string '%s': expected %d, got %d", s, expectedResults[j], results[j])
+			t.Fatalf("wrong Result for string '%s': expected %d, got %d", s, expectedResults[j], results[j])
 		}
 	}
 }

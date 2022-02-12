@@ -7,36 +7,36 @@ import (
 
 type fsmTest struct {
 	s               string
-	expectedResults []result
+	expectedResults []localResult
 }
 
 type compiledTest struct {
 	regex           string
 	input           string
-	expectedResults []result
+	expectedResults []localResult
 }
 
 func TestCharacterwithwildcardmodifier(t *testing.T) {
 	for _, tt := range []compiledTest{
 		// (1) <-a- -b-> (2!)
-		{regex: "a*b", input: "ab", expectedResults: []result{{0, 1}}},
-		{regex: "a*b", input: "aab", expectedResults: []result{{0, 2}}},
-		{regex: "a*b", input: "aaab", expectedResults: []result{{0, 3}}},
-		{regex: "a*b", input: "b", expectedResults: []result{{0, 0}}},
-		{regex: "a*b", input: "bb", expectedResults: []result{{0, 0}, {1, 1}}},
+		{regex: "a*b", input: "ab", expectedResults: []localResult{{0, 1}}},
+		{regex: "a*b", input: "aab", expectedResults: []localResult{{0, 2}}},
+		{regex: "a*b", input: "aaab", expectedResults: []localResult{{0, 3}}},
+		{regex: "a*b", input: "b", expectedResults: []localResult{{0, 0}}},
+		{regex: "a*b", input: "bb", expectedResults: []localResult{{0, 0}, {1, 1}}},
 		{regex: "a*b", input: "a"},
 		{regex: "a*b", input: "aa"},
-		{regex: "abc*", input: "ab", expectedResults: []result{{0, 1}}},
-		{regex: "abc*", input: "abc", expectedResults: []result{{0, 1}}},  // don't match full string as they are greedy
-		{regex: "abc*", input: "abcc", expectedResults: []result{{0, 1}}}, // don't match full string as they are greedy
+		{regex: "abc*", input: "ab", expectedResults: []localResult{{0, 1}}},
+		{regex: "abc*", input: "abc", expectedResults: []localResult{{0, 1}}},  // don't match full string as they are greedy
+		{regex: "abc*", input: "abcc", expectedResults: []localResult{{0, 1}}}, // don't match full string as they are greedy
 	} {
 		testCompiledMachine(t, tt.regex, fsmTest{s: tt.input, expectedResults: tt.expectedResults})
 	}
 }
 func TestDeeplynestedcatenation(t *testing.T) {
 	for _, tt := range []compiledTest{
-		{regex: "(((ab)(c)d)|(fg))", input: "abcd", expectedResults: []result{{0, 3}}},
-		{regex: "(((ab)(c)d)|(fg))", input: "fg", expectedResults: []result{{0, 1}}},
+		{regex: "(((ab)(c)d)|(fg))", input: "abcd", expectedResults: []localResult{{0, 3}}},
+		{regex: "(((ab)(c)d)|(fg))", input: "fg", expectedResults: []localResult{{0, 1}}},
 		{regex: "(((ab)(c)d)|(fg))", input: "abc"},
 		{regex: "(((ab)(c)d)|(fg))", input: "f"},
 	} {
@@ -45,21 +45,21 @@ func TestDeeplynestedcatenation(t *testing.T) {
 }
 func TestMultiplepipebranches(t *testing.T) {
 	for _, tt := range []compiledTest{
-		{regex: "abc|def|xyz", input: "abc", expectedResults: []result{{0, 2}}},
-		{regex: "abc|def|xyz", input: "def", expectedResults: []result{{0, 2}}},
-		{regex: "abc|def|xyz", input: "xyz", expectedResults: []result{{0, 2}}},
-		{regex: "abc|abx|aby|abz", input: "abz", expectedResults: []result{{0, 2}}},
-		{regex: "abc|abx|aby|abz", input: "abc", expectedResults: []result{{0, 2}}},
-		{regex: "abc|abx|aby|abz", input: "abr", expectedResults: []result{}},
+		{regex: "abc|def|xyz", input: "abc", expectedResults: []localResult{{0, 2}}},
+		{regex: "abc|def|xyz", input: "def", expectedResults: []localResult{{0, 2}}},
+		{regex: "abc|def|xyz", input: "xyz", expectedResults: []localResult{{0, 2}}},
+		{regex: "abc|abx|aby|abz", input: "abz", expectedResults: []localResult{{0, 2}}},
+		{regex: "abc|abx|aby|abz", input: "abc", expectedResults: []localResult{{0, 2}}},
+		{regex: "abc|abx|aby|abz", input: "abr", expectedResults: []localResult{}},
 	} {
 		testCompiledMachine(t, tt.regex, fsmTest{s: tt.input, expectedResults: tt.expectedResults})
 	}
 }
 func TestZeroormoreofagroup(t *testing.T) {
 	for _, tt := range []compiledTest{
-		{regex: "(ab)*", input: "", expectedResults: []result{{0, 0}}},
-		{regex: "(ab)*", input: "ab", expectedResults: []result{{0, 0}, {1, 1}, {2, 2}}},                   // too greedy for interesting results
-		{regex: "(ab)*", input: "abab", expectedResults: []result{{0, 0}, {1, 1}, {2, 2}, {3, 3}, {4, 4}}}, // too greedy for interesting results
+		{regex: "(ab)*", input: "", expectedResults: []localResult{{0, 0}}},
+		{regex: "(ab)*", input: "ab", expectedResults: []localResult{{0, 0}, {1, 1}, {2, 2}}},                   // too greedy for interesting results
+		{regex: "(ab)*", input: "abab", expectedResults: []localResult{{0, 0}, {1, 1}, {2, 2}, {3, 3}, {4, 4}}}, // too greedy for interesting results
 	} {
 		testCompiledMachine(t, tt.regex, fsmTest{s: tt.input, expectedResults: tt.expectedResults})
 	}
@@ -68,18 +68,18 @@ func TestZeroormoreofagroup(t *testing.T) {
 func TestCharacterwithoneormoremodifier(t *testing.T) {
 	for _, tt := range []compiledTest{
 		// 1) -a-> (2) <-a- -b-> (3!)
-		{regex: "a+b", input: "ab", expectedResults: []result{{0, 1}}},
-		{regex: "a+b", input: "aab", expectedResults: []result{{0, 2}}},
-		{regex: "a+b", input: "aaab", expectedResults: []result{{0, 3}}},
+		{regex: "a+b", input: "ab", expectedResults: []localResult{{0, 1}}},
+		{regex: "a+b", input: "aab", expectedResults: []localResult{{0, 2}}},
+		{regex: "a+b", input: "aaab", expectedResults: []localResult{{0, 3}}},
 		{regex: "a+b", input: "aazb"},
 		{regex: "a+b", input: "a"},
 		{regex: "a+b", input: "b"},
 
 		{regex: "xy+", input: "x"},
 		{regex: "xy+", input: "y"},
-		{regex: "xy+", input: "xy", expectedResults: []result{{0, 1}}},
-		{regex: "xy+", input: "xyxy", expectedResults: []result{{0, 1}, {2, 3}}},
-		{regex: "xy+", input: "xyyy", expectedResults: []result{{0, 1}}}, // too greedy, will grab the first match which is (0,1) instead of (0,3)
+		{regex: "xy+", input: "xy", expectedResults: []localResult{{0, 1}}},
+		{regex: "xy+", input: "xyxy", expectedResults: []localResult{{0, 1}, {2, 3}}},
+		{regex: "xy+", input: "xyyy", expectedResults: []localResult{{0, 1}}}, // too greedy, will grab the first match which is (0,1) instead of (0,3)
 	} {
 		testCompiledMachine(t, tt.regex, fsmTest{s: tt.input, expectedResults: tt.expectedResults})
 	}
@@ -88,12 +88,14 @@ func TestCharacterwithoneormoremodifier(t *testing.T) {
 func TestCharacterWithZeroOrOneModifier(t *testing.T) {
 	for _, tt := range []compiledTest{
 		//
-		{regex: "a?b", input: "ab", expectedResults: []result{{0, 1}}},
-		{regex: "a?b", input: "b", expectedResults: []result{{0, 0}}},
+		{regex: "a?b", input: "ab", expectedResults: []localResult{{0, 1}}},
+		{regex: "a?b", input: "b", expectedResults: []localResult{{0, 0}}},
 		{regex: "a?b", input: "a"},
 
-		{regex: "cats?", input: "cat", expectedResults: []result{{0, 2}}},
-		{regex: "cats?", input: "cats", expectedResults: []result{{0, 2}}}, // too greedy
+		{regex: "cats?", input: "cat", expectedResults: []localResult{{0, 2}}},
+		{regex: "cats?", input: "cats", expectedResults: []localResult{{0, 2}}}, // too greedy
+
+		{regex: "sodomite", input: "sodomites?", expectedResults: []localResult{{0, 7}}},
 	} {
 		testCompiledMachine(t, tt.regex, fsmTest{s: tt.input, expectedResults: tt.expectedResults})
 	}
@@ -118,13 +120,13 @@ func TestLinkedOverlappingBranchMatcher(t *testing.T) {
 		Build()
 
 	for _, tt := range []fsmTest{
-		{"dog", []result{{0, 2}}},
-		{"dot", []result{{0, 2}}},
-		{"dox", []result{}},
-		{"doxdog", []result{{3, 5}}},
-		{"doxdot", []result{{3, 5}}},
-		{"dodot", []result{{2, 4}}},
-		{"dodog", []result{{2, 4}}},
+		{"dog", []localResult{{0, 2}}},
+		{"dot", []localResult{{0, 2}}},
+		{"dox", []localResult{}},
+		{"doxdog", []localResult{{3, 5}}},
+		{"doxdot", []localResult{{3, 5}}},
+		{"dodot", []localResult{{2, 4}}},
+		{"dodog", []localResult{{2, 4}}},
 	} {
 		testMachine(t, desc, tt, m)
 		testCompiledMachine(t, desc, tt)
@@ -155,13 +157,13 @@ func TestOverlappingBranchComposableMatcher(t *testing.T) {
 		Build()
 
 	for _, tt := range []fsmTest{
-		{"dog", []result{{0, 2}}},
-		{"dot", []result{{0, 2}}},
-		{"dox", []result{}},
-		{"doxdog", []result{{3, 5}}},
-		{"doxdot", []result{{3, 5}}},
-		{"dodot", []result{{2, 4}}},
-		{"dodog", []result{{2, 4}}},
+		{"dog", []localResult{{0, 2}}},
+		{"dot", []localResult{{0, 2}}},
+		{"dox", []localResult{}},
+		{"doxdog", []localResult{{3, 5}}},
+		{"doxdot", []localResult{{3, 5}}},
+		{"dodot", []localResult{{2, 4}}},
+		{"dodog", []localResult{{2, 4}}},
 	} {
 		testMachine(t, desc, tt, m)
 		testCompiledMachine(t, desc, tt)
@@ -181,10 +183,10 @@ func TestLinkedBranchMatcher(t *testing.T) {
 		Build()
 
 	for _, tt := range []fsmTest{
-		{"abc", []result{{0, 2}}},
-		{"ade", []result{{0, 2}}},
-		{"abd", []result{}},
-		{"bc", []result{}},
+		{"abc", []localResult{{0, 2}}},
+		{"ade", []localResult{{0, 2}}},
+		{"abd", []localResult{}},
+		{"bc", []localResult{}},
 	} {
 		testMachine(t, desc, tt, m)
 		testCompiledMachine(t, desc, tt)
@@ -196,9 +198,9 @@ func TestManyRunnersLinked(t *testing.T) {
 	regex := "a*aaaaa"
 
 	for _, tt := range []fsmTest{
-		{"aaaaa", []result{{0, 4}}},
-		{"aaaaaa", []result{{0, 4}}},
-		{"aaaaaaa", []result{{0, 4}}},
+		{"aaaaa", []localResult{{0, 4}}},
+		{"aaaaaa", []localResult{{0, 4}}},
+		{"aaaaaaa", []localResult{{0, 4}}},
 	} {
 		testCompiledMachine(t, regex, tt)
 	}
@@ -214,11 +216,11 @@ func TestLinkedAnyCharacterMatcher(t *testing.T) {
 		Build()
 
 	for _, tt := range []fsmTest{
-		{"", []result{}},
-		{"ab", []result{}},
-		{"azb", []result{{0, 2}}},
-		{"acb", []result{{0, 2}}},
-		{"azzzb", []result{}},
+		{"", []localResult{}},
+		{"ab", []localResult{}},
+		{"azb", []localResult{{0, 2}}},
+		{"acb", []localResult{{0, 2}}},
+		{"azzzb", []localResult{}},
 	} {
 		testMachine(t, desc, tt, m)
 		testCompiledMachine(t, desc, tt)
@@ -235,13 +237,13 @@ func TestLinkedWildcardMatcher(t *testing.T) {
 		Build()
 
 	for _, tt := range []fsmTest{
-		{"ab", []result{{0, 1}}},
-		{"azb", []result{{0, 2}}},
-		{"azzzb", []result{{0, 4}}},
-		{"azzz", []result{}},
-		{"ba", []result{}},
-		{"aaaabbbb", []result{{0, 4}}},
-		{"ababaccb", []result{{0, 1}, {2, 3}, {4, 7}}},
+		{"ab", []localResult{{0, 1}}},
+		{"azb", []localResult{{0, 2}}},
+		{"azzzb", []localResult{{0, 4}}},
+		{"azzz", []localResult{}},
+		{"ba", []localResult{}},
+		{"aaaabbbb", []localResult{{0, 4}}},
+		{"ababaccb", []localResult{{0, 1}, {2, 3}, {4, 7}}},
 	} {
 		testMachine(t, desc, tt, m)
 		testCompiledMachine(t, desc, tt)
@@ -258,9 +260,9 @@ func TestSimpleMatcher(t *testing.T) {
 		Build()
 
 	for _, tt := range []fsmTest{
-		{"abcdefg", []result{{0, 2}}},
-		{"abcabc", []result{{0, 2}, {3, 5}}},
-		{"ab", []result{}},
+		{"abcdefg", []localResult{{0, 2}}},
+		{"abcabc", []localResult{{0, 2}, {3, 5}}},
+		{"ab", []localResult{}},
 	} {
 		testMachine(t, desc, tt, m)
 		testCompiledMachine(t, desc, tt)
@@ -277,9 +279,9 @@ func TestSimpleOverlappingMatcher(t *testing.T) {
 		Build()
 
 	for _, tt := range []fsmTest{
-		{"aaa", []result{{0, 2}}},
-		{"aab", []result{}},
-		{"aaaaaa", []result{{0, 2}, {3, 5}}},
+		{"aaa", []localResult{{0, 2}}},
+		{"aab", []localResult{}},
+		{"aaaaaa", []localResult{{0, 2}, {3, 5}}},
 	} {
 		testMachine(t, desc, tt, m)
 		testCompiledMachine(t, desc, tt)
