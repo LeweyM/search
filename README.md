@@ -1,7 +1,7 @@
 # TODO
 
 ## Regex
-- [ ] Find largest search result
+- [ ] Find the longest search result
 - [ ] Find multiple results
 
 ## ReadTime CLI

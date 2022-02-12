@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"fmt"
+	"io"
 	"os"
 	screen "search/src/screen"
 	"search/src/search"
@@ -11,10 +12,11 @@ import (
 
 func main() {
 	input := make(chan string)
+	io := os.Stdin
 	sc := screen.NewScreen(os.Stdout, input)
 	ctx := context.Background()
 
-	sc.Run(ctx)
+	sc.Run(ctx, io, func() { os.Exit(1) })
 
 	list(ctx, input, sc)
 	//count(ctx, input, sc)
@@ -27,8 +29,13 @@ type displayState struct {
 	target string
 }
 
-func list(ctx context.Context, input chan string, sc screen.Screen) {
-	se := search.NewSearch("./bible.txt")
+type Screen interface {
+	SetLines(lines []string)
+	Run(ctx context.Context, reader io.Reader, exit func())
+}
+
+func list(ctx context.Context, input chan string, sc Screen) {
+	se := search.NewSearch("./dict.txt")
 	se.LoadInMemory()
 	se.LoadLinesInMemory()
 
@@ -69,6 +76,10 @@ func list(ctx context.Context, input chan string, sc screen.Screen) {
 
 	for {
 		select {
+		// return if outer context is cancelled
+		case <-ctx.Done():
+			cancelFunc()
+			return
 		case t := <-input:
 			state = displayState{}
 			cancelFunc()
@@ -77,7 +88,7 @@ func list(ctx context.Context, input chan string, sc screen.Screen) {
 				state.ready = true
 				state.target = t
 				currentQuery = t
-				go se.Search(cancel, t, results)
+				go se.SearchRegex(cancel, t, results)
 			} else {
 				state.ready = false
 			}
@@ -95,7 +106,7 @@ func list(ctx context.Context, input chan string, sc screen.Screen) {
 	}
 }
 
-func count(ctx context.Context, input chan string, sc screen.Screen) {
+func count(ctx context.Context, input chan string, sc Screen) {
 	se := search.NewSearch("./dict.txt")
 	se.LoadInMemory()
 

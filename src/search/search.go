@@ -3,6 +3,7 @@ package search
 import (
 	"context"
 	"os"
+	finite_state_machine "search/src/finite-state-machine"
 	"strings"
 )
 
@@ -86,10 +87,10 @@ func (s *search) Search(ctx context.Context, target string, out chan Result) {
 			if i+len(target) <= len(s.content) && string(s.content[i:i+len(target)]) == target {
 				//time.Sleep(time.Duration(rand.Intn(50)) * time.Millisecond)
 				out <- Result{
-					Finished: false,
-					Query: target,
-					Count: count,
-					LineNumber:  line+1,
+					Finished:    false,
+					Query:       target,
+					Count:       count,
+					LineNumber:  line + 1,
 					LineContent: s.lines[line],
 				}
 				count++
@@ -99,11 +100,48 @@ func (s *search) Search(ctx context.Context, target string, out chan Result) {
 	}
 	out <- Result{
 		Finished: true,
-		Query: target,
+		Query:    target,
 	}
 }
 
 func (s *search) SearchRegex(ctx context.Context, regex string, out chan Result) {
+	state := finite_state_machine.Compile(regex)
+	runner := finite_state_machine.NewRunner(state)
+	resultChan := make(chan finite_state_machine.Result, 10)
 
+	go finite_state_machine.FindAllAsync(runner, string(s.content), resultChan)
+
+	count := 0
+	for result := range resultChan {
+		out <- Result{
+			LineNumber:  result.Line,
+			LineContent: string(s.content)[s.sampleStart(result):s.sampleEnd(result)],
+			Count:       count,
+			Query:       regex,
+			Finished:    false,
+		}
+		count++
+	}
+
+	out <- Result{
+		Finished: true,
+	}
 }
 
+func (s *search) sampleEnd(result finite_state_machine.Result) int {
+	end := result.End + 1 + 15
+	if end >= len(s.content) {
+		return result.End + 1
+	} else {
+		return end
+	}
+}
+
+func (s *search) sampleStart(result finite_state_machine.Result) int {
+	start := result.Start - 15
+	if start < 0 {
+		return 0
+	} else {
+		return start
+	}
+}

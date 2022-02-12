@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"golang.org/x/crypto/ssh/terminal"
 	"io"
-	"os"
 	"time"
 )
 
@@ -32,23 +31,18 @@ func (a state) linesAreEqual(other state) bool {
 }
 
 type screen struct {
-	writer         io.Writer
-	InputChan      chan rune
-	linesChan      chan []string
-	output         chan string
-}
-
-type Screen interface {
-	SetLines(lines []string)
-	Run(ctx context.Context)
+	writer    io.Writer
+	InputChan chan rune
+	linesChan chan []string
+	output    chan string
 }
 
 func NewScreen(writer io.Writer, out chan string) *screen {
 	return &screen{
-		writer:         writer,
-		InputChan:      make(chan rune),
-		linesChan:      make(chan []string),
-		output:         out,
+		writer:    writer,
+		InputChan: make(chan rune, 100),
+		linesChan: make(chan []string, 100),
+		output:    out,
 	}
 }
 
@@ -56,27 +50,26 @@ func (s *screen) SetLines(lines []string) {
 	s.linesChan <- lines
 }
 
-func (s *screen) Run(ctx context.Context) {
-	fmt.Print("\033[?25l") // hide cursor
-	terminal.MakeRaw(0)    // fd 0 is stdin
+func (s *screen) Run(ctx context.Context, inputStream io.Reader, exit func()) {
+	//fmt.Print("\033[?25l") // hide cursor
+	terminal.MakeRaw(0) // fd 0 is stdin
 
-	go s.readInput(ctx, bufio.NewReader(os.Stdin))
+	go s.readInput(ctx, time.NewTicker(10*time.Millisecond), bufio.NewReader(inputStream), exit)
 	go s.update(ctx, time.NewTicker(100*time.Millisecond))
 }
 
-func (s *screen) readInput(ctx context.Context, in *bufio.Reader) {
+func (s *screen) readInput(ctx context.Context, ticker *time.Ticker, in io.RuneReader, exit func()) {
 	for {
 		select {
 		case <-ctx.Done():
 			return
-		default:
+		case <-ticker.C:
 			r, _, err := in.ReadRune()
 			if err != nil {
-				panic(err)
-			}
-			// exit program on key "Q"
+				//panic(err)
+			} // exit program on key "Q"
 			if r == 'Q' {
-				os.Exit(0)
+				exit()
 			}
 			s.InputChan <- r
 		}
@@ -94,6 +87,7 @@ func (s *screen) update(ctx context.Context, ticker *time.Ticker) {
 			ticker.Stop()
 			return
 		case r := <-s.InputChan:
+			// backspace
 			if r == 127 {
 				if len(inputL) > 0 {
 					inputL = inputL[0 : len(inputL)-1]
@@ -105,6 +99,10 @@ func (s *screen) update(ctx context.Context, ticker *time.Ticker) {
 			if r == 13 {
 				inputL = ""
 				s.output <- inputL
+				continue
+			}
+			// non-alphanumeric numbers
+			if r < 65 || r > 122 {
 				continue
 			}
 			inputL = inputL + string(r)

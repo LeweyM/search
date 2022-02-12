@@ -1,7 +1,7 @@
 package finite_state_machine
 
-type result struct {
-	start, end int
+type Result struct {
+	Line, Start, End int
 }
 
 type Machine interface {
@@ -9,19 +9,22 @@ type Machine interface {
 	Reset()
 }
 
-func FindAll(finiteStateMachine Machine, searchString string) []result {
-	var results []result
-
+func FindAllAsync(finiteStateMachine Machine, searchString string, out chan Result) {
+	defer close(out)
+	lineCounter := 0
 	start := 0
 	end := 0
-	runes := append([]rune(searchString), 0) // we add a 'NULL' 0 rune at the end so that even empty string inputs are processed.
+	runes := append([]rune(searchString), 0) // we add a 'NULL' 0 rune at the End so that even empty string inputs are processed.
 	hasRerunFail := false
 	for end < len(runes) {
 		char := runes[end]
+		if char == '\n' {
+			lineCounter++
+		}
 		currentState := finiteStateMachine.Next(char)
 		switch currentState {
 		case Success:
-			results = append(results, result{start: start, end: end})
+			out <- Result{Start: start, End: end, Line: lineCounter}
 			finiteStateMachine.Reset()
 			end++
 			start = end
@@ -41,6 +44,22 @@ func FindAll(finiteStateMachine Machine, searchString string) []result {
 		default:
 			end++
 		}
+	}
+}
+
+type localResult struct {
+	start, end int
+}
+
+func FindAll(finiteStateMachine Machine, searchString string) []localResult {
+	var results []localResult
+	resultChan := make(chan Result, 10)
+	FindAllAsync(finiteStateMachine, searchString, resultChan)
+	for res := range resultChan {
+		results = append(results, localResult{
+			start: res.Start,
+			end:   res.End,
+		})
 	}
 	return results
 }
