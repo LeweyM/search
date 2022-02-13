@@ -109,7 +109,7 @@ func (s *search) SearchRegex(ctx context.Context, regex string, out chan Result)
 	runner := finite_state_machine.NewRunner(state)
 	resultChan := make(chan finite_state_machine.Result, 10)
 
-	go finite_state_machine.FindAllAsync(runner, string(s.content), resultChan)
+	go finite_state_machine.FindAllAsync(ctx, runner, string(s.content), resultChan)
 
 	count := 0
 	for result := range resultChan {

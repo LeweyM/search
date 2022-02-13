@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"golang.org/x/crypto/ssh/terminal"
 	"io"
+	"strings"
 	"time"
 )
 
@@ -66,7 +67,7 @@ func (s *screen) readInput(ctx context.Context, ticker *time.Ticker, in io.RuneR
 		case <-ticker.C:
 			r, _, err := in.ReadRune()
 			if err != nil {
-				//panic(err)
+				panic(err)
 			} // exit program on key "Q"
 			if r == 'Q' {
 				exit()
@@ -101,10 +102,10 @@ func (s *screen) update(ctx context.Context, ticker *time.Ticker) {
 				s.output <- inputL
 				continue
 			}
-			// non-alphanumeric numbers
-			if r < 65 || r > 122 {
-				continue
-			}
+			//// non-alphanumeric numbers
+			//if r < 65 || r > 122 {
+			//	continue
+			//}
 			inputL = inputL + string(r)
 			hasChanged = false
 			s.output <- inputL
@@ -142,7 +143,7 @@ func (s *screen) printScreen(st state) {
 	fmt.Fprint(s.writer, "\r\n")
 
 	for _, line := range st.lines {
-		fmt.Fprintf(s.writer, "\r\n%s", line)
+		fmt.Fprintf(s.writer, "\r\n%s", strings.ReplaceAll(line, "\n", " \\n "))
 	}
 }
 

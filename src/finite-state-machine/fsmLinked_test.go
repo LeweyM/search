@@ -16,6 +16,15 @@ type compiledTest struct {
 	expectedResults []localResult
 }
 
+func BenchmarkLinkedFSM(b *testing.B) {
+	for i := 0; i < b.N; i++ {
+		compiledMachine := Compile("abc")
+		runner := NewRunner(compiledMachine)
+		runner.Reset()
+		FindAll(runner, "adbdbsbabc")
+	}
+}
+
 func TestCharacterwithwildcardmodifier(t *testing.T) {
 	for _, tt := range []compiledTest{
 		// (1) <-a- -b-> (2!)
