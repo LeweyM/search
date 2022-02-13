@@ -1,5 +1,9 @@
 package finite_state_machine
 
+import "fmt"
+
+const DEBUG = false
+
 func Compile(input string) *StateLinked {
 	symbols := lex(input)
 	compiler := stackCompiler{}
@@ -70,7 +74,7 @@ func (s *stackCompiler) compile(symbols []symbol) *StateLinked {
 			s1 := s.pop()
 			s2Tail := tail(s1)
 			next := &StateLinked{}
-			s.append(s2Tail, next, func(r rune) bool { return r == symbol.letter }, "to -> "+string(symbol.letter))
+			s.append(s2Tail, next, func(r rune) bool { return r == symbol.letter }, getDescription(symbol))
 			s.push(s1)
 		case AnyCharacter:
 			s1 := s.pop()
@@ -112,6 +116,16 @@ func (s *stackCompiler) compile(symbols []symbol) *StateLinked {
 		symbols = symbols[1:]
 	}
 	return head
+}
+
+func getDescription(symbol symbol) string {
+	var desc string
+	if DEBUG {
+		desc = fmt.Sprintf("to -> %d", symbol.letter)
+	} else {
+		desc = "to -> letter"
+	}
+	return desc
 }
 
 func tail(s *StateLinked) *StateLinked {
@@ -157,8 +171,6 @@ const (
 	ZeroOrMore
 	OneOrMore
 	ZeroOrOne
-	BOF
-	EOF
 )
 
 type symbol struct {

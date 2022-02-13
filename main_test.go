@@ -10,7 +10,7 @@ import (
 
 func BenchmarkList(b *testing.B) {
 	for i := 0; i < b.N; i++ {
-		testWithInput("aaaaaaaaaaaaaaaaaaaaaaaaaaa")
+		testWithInput("aaaaaaaaaaaaaaaaaaaaaaaaaaa") // ~280058584 ns/op
 	}
 }
 

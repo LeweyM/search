@@ -28,7 +28,7 @@ func (s *StateLinked) matchingTransitions(input rune) []destination {
 			matchingTransitions = append(matchingTransitions, t.to)
 		}
 	}
-	return append(matchingTransitions)
+	return matchingTransitions
 }
 
 func (s *StateLinked) isSuccessState() bool {
