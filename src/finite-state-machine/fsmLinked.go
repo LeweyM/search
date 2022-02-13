@@ -80,45 +80,48 @@ func NewRunner(head *StateLinked) *runner {
 }
 
 func (r *runner) Next(input rune) StateType {
-	activeBranches := r.nonFailedBranches()
-
 	// move along epsilon transitions first.
 	// This is probably inefficient and could be moved into the main loop.
-	r.processEpsilons(input, activeBranches)
+	r.processEpsilons(input, r.branches)
 
 	// move along regular transitions
-	activeBranches = r.nonFailedBranches()
-	for bIndex, b := range activeBranches {
+	var nonFailedBranches []branch
+
+	for bIndex, b := range r.branches {
 		matchingTransitions := b.currState.matchingTransitions(input)
 		// if no transitions are possible, the branch has failed
 		if len(matchingTransitions) == 0 {
-			r.branches[bIndex].currState = r.failState
+			// remove failed branch
 			continue
 		}
 		// if there is only one transition, we move
 		if len(matchingTransitions) == 1 {
-			r.branches[bIndex].currState = matchingTransitions[0]
+			br := r.branches[bIndex]
+			br.currState = matchingTransitions[0]
+			nonFailedBranches = append(nonFailedBranches, br)
 			continue
 		}
 		// if there are multiple transitions, we branch
-		r.branches[bIndex].currState = matchingTransitions[0]
+		br := r.branches[bIndex]
+		br.currState = matchingTransitions[0]
+		nonFailedBranches = append(nonFailedBranches, br)
+
 		for i := 1; i < len(matchingTransitions); i++ {
 			// TODO: Trim duplicate branches here. Maybe store as a set of 'to' pointers
-			r.branches = append(r.branches, branch{
+			nonFailedBranches = append(nonFailedBranches, branch{
 				currState: matchingTransitions[i],
 			})
 		}
 	}
+	r.branches = nonFailedBranches
 
 	// move along epsilon transitions after
-	r.processEpsilons(input, activeBranches)
+	r.processEpsilons(input, r.branches)
 
-	// recount active branches here as the number could have changed
-	activeBranches = r.nonFailedBranches()
-	if len(activeBranches) == 0 {
+	if len(r.branches) == 0 {
 		return Fail
 	}
-	for _, b := range activeBranches {
+	for _, b := range r.branches {
 		if b.currState.isSuccessState() {
 			return Success
 		}
@@ -126,8 +129,8 @@ func (r *runner) Next(input rune) StateType {
 	return Normal
 }
 
-func (r *runner) processEpsilons(input rune, activeBranches []branch) {
-	for bIndex, _ := range activeBranches {
+func (r *runner) processEpsilons(input rune, branches []branch) {
+	for bIndex := range branches {
 		matchingTransitions := r.branches[bIndex].currState.matchingTransitions(input)
 
 		for _, t := range r.branches[bIndex].currState.transitions1 {
@@ -146,16 +149,6 @@ func (r *runner) processEpsilons(input rune, activeBranches []branch) {
 
 func (r *runner) Reset() {
 	r.branches = []branch{{currState: r.head}}
-}
-
-func (r *runner) nonFailedBranches() []branch {
-	var activeBranches []branch
-	for _, b := range r.branches {
-		if !r.onFailState(b) {
-			activeBranches = append(activeBranches, b)
-		}
-	}
-	return activeBranches
 }
 
 func (r *runner) onFailState(b branch) bool {
