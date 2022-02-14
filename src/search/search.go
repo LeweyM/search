@@ -7,6 +7,8 @@ import (
 	"strings"
 )
 
+const CHAR_PADDING int = 50
+
 type search struct {
 	filePath string
 	content  []byte
@@ -19,6 +21,7 @@ type Result struct {
 	Count       int
 	Query       string
 	Finished    bool
+	Result      struct{ start, end int }
 }
 
 func NewSearch(filePath string) *search {
@@ -116,6 +119,7 @@ func (s *search) SearchRegex(ctx context.Context, regex string, out chan Result)
 		out <- Result{
 			LineNumber:  result.Line,
 			LineContent: string(s.content)[s.sampleStart(result):s.sampleEnd(result)],
+			Result:      struct{start, end int}{start: result.Start, end: result.End},
 			Count:       count,
 			Query:       regex,
 			Finished:    false,
@@ -129,7 +133,7 @@ func (s *search) SearchRegex(ctx context.Context, regex string, out chan Result)
 }
 
 func (s *search) sampleEnd(result finite_state_machine.Result) int {
-	end := result.End + 1 + 15
+	end := result.End + 1 + CHAR_PADDING
 	if end >= len(s.content) {
 		return result.End + 1
 	} else {
@@ -138,7 +142,7 @@ func (s *search) sampleEnd(result finite_state_machine.Result) int {
 }
 
 func (s *search) sampleStart(result finite_state_machine.Result) int {
-	start := result.Start - 15
+	start := result.Start - CHAR_PADDING
 	if start < 0 {
 		return 0
 	} else {

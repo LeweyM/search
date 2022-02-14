@@ -8,6 +8,7 @@ import (
 	screen "search/src/screen"
 	"search/src/search"
 	"strconv"
+	"strings"
 )
 
 func main() {
@@ -23,57 +24,45 @@ func main() {
 }
 
 type displayState struct {
-	ready  bool
-	lines  []string
-	done   bool
-	target string
+	Ready bool
+	Lines  []string
+	Done   bool
+	Target string
 }
 
 type Screen interface {
 	SetLines(lines []string)
 	Run(ctx context.Context, reader io.Reader, exit func())
+	SetState(state interface{})
+	SetTemplate(templateString string)
 }
 
 func list(ctx context.Context, input chan string, sc Screen) {
-	se := search.NewSearch("./dict.txt")
+	se := search.NewSearch("./bible.txt")
 	se.LoadInMemory()
 	se.LoadLinesInMemory()
 
 	currentQuery := ""
 
 	state := displayState{}
+	templateString := `Input: {{ .Target }}
+{{ if not .Ready }}Enter 3 letters or more to search.
+{{ else }}{{ range $i, $line := .Lines }}
+{{ $line }}{{ end }}
+... Searching
+{{ end }}
+	`
+	sc.SetTemplate(templateString)
+
 	show := func(dState displayState) {
-		if !dState.ready {
-			sc.SetLines([]string{"Enter 3 letters or more to search."})
-			return
-		}
-
-		for i, line := range dState.lines {
-			if len(line) > 50 {
-				dState.lines[i] = dState.lines[i][:50] + "..."
-			}
-		}
-
-		if len(dState.lines) > 10 {
-			display := append(dState.lines[:10], fmt.Sprintf("... %d more results not shown for query \"%s\"", len(dState.lines)-10, dState.target))
-			if dState.done {
-				sc.SetLines(append(display, fmt.Sprintf("Search finished. %d matching entries found.", len(dState.lines))))
-			} else {
-				sc.SetLines(append(display, "... Searching"))
-			}
-		} else {
-			if dState.done {
-				sc.SetLines(append(dState.lines, fmt.Sprintf("Search finished. %d matching entries found.", len(dState.lines))))
-			} else {
-				sc.SetLines(append(dState.lines, "... Searching"))
-			}
-		}
+		sc.SetState(dState)
 	}
 	show(state)
 
 	results := make(chan search.Result)
 	cancel, cancelFunc := context.WithCancel(ctx)
 
+	resultCounter := 0
 	for {
 		select {
 		// return if outer context is cancelled
@@ -82,23 +71,34 @@ func list(ctx context.Context, input chan string, sc Screen) {
 			return
 		case t := <-input:
 			state = displayState{}
+			resultCounter = 0
 			cancelFunc()
 			cancel, cancelFunc = context.WithCancel(ctx)
+			state.Target = t
 			if len(t) >= 3 {
-				state.ready = true
-				state.target = t
+				state.Ready = true
 				currentQuery = t
 				go se.SearchRegex(cancel, t, results)
 			} else {
-				state.ready = false
+				state.Ready = false
 			}
 			show(state)
 		case r := <-results:
 			if r.Query == currentQuery {
+				resultCounter++
 				if r.Finished {
-					state.done = true
+					state.Done = true
 				} else {
-					state.lines = append(state.lines, fmt.Sprintf("%d: line-%s: \"%s\"", len(state.lines), strconv.Itoa(r.LineNumber), r.LineContent))
+					if len(state.Lines) < 10 {
+						line := strings.ReplaceAll(r.LineContent, "\n", " \\n ")
+						state.Lines = append(state.Lines, fmt.Sprintf("%d: line-%s: \"%s\"", len(state.Lines), strconv.Itoa(r.LineNumber), line))
+					} else {
+						if len(state.Lines) < 11 {
+							state.Lines = append(state.Lines, "1 more element not shown")
+						}
+						state.Lines[10] =  fmt.Sprintf("%d more elements not shown", resultCounter)
+
+					}
 				}
 				show(state)
 			}

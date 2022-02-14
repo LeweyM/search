@@ -2,11 +2,13 @@ package screen
 
 import (
 	"bufio"
+	"bytes"
 	"context"
 	"fmt"
 	"golang.org/x/crypto/ssh/terminal"
 	"io"
 	"strings"
+	"text/template"
 	"time"
 )
 
@@ -36,6 +38,26 @@ type screen struct {
 	InputChan chan rune
 	linesChan chan []string
 	output    chan string
+	template  *template.Template
+}
+
+func (s *screen) SetState(state interface{}) {
+	var bf bytes.Buffer
+	err := s.template.Execute(&bf, state)
+	if err != nil {
+		panic(err)
+	}
+	s2 := bf.String()
+	split := strings.Split(s2, "\n")
+	s.linesChan <- split
+}
+
+func (s *screen) SetTemplate(templateString string) {
+	parsedTemplate, err := template.New("screenTemplate").Parse(templateString)
+	if err != nil {
+		panic(err)
+	}
+	s.template = parsedTemplate
 }
 
 func NewScreen(writer io.Writer, out chan string) *screen {
@@ -52,11 +74,11 @@ func (s *screen) SetLines(lines []string) {
 }
 
 func (s *screen) Run(ctx context.Context, inputStream io.Reader, exit func()) {
-	//fmt.Print("\033[?25l") // hide cursor
+	fmt.Print("\033[?25l") // hide cursor
 	terminal.MakeRaw(0) // fd 0 is stdin
 
 	go s.readInput(ctx, time.NewTicker(10*time.Millisecond), bufio.NewReader(inputStream), exit)
-	go s.update(ctx, time.NewTicker(100*time.Millisecond))
+	go s.update(ctx, time.NewTicker(50*time.Millisecond))
 }
 
 func (s *screen) readInput(ctx context.Context, ticker *time.Ticker, in io.RuneReader, exit func()) {
@@ -137,13 +159,8 @@ func (s *screen) refresh(ctx context.Context, st state) bool {
 }
 
 func (s *screen) printScreen(st state) {
-	fmt.Fprint(s.writer, "screen: ")
-	fmt.Fprint(s.writer, "\r\n")
-	fmt.Fprint(s.writer, st.input)
-	fmt.Fprint(s.writer, "\r\n")
-
 	for _, line := range st.lines {
-		fmt.Fprintf(s.writer, "\r\n%s", strings.ReplaceAll(line, "\n", " \\n "))
+		fmt.Fprintf(s.writer, "\r\n%s", line)
 	}
 }
 
