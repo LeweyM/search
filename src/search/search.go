@@ -15,13 +15,17 @@ type search struct {
 	lines    []string
 }
 
+type Match struct {
+	Start, End int
+}
+
 type Result struct {
 	LineNumber  int
 	LineContent string
 	Count       int
 	Query       string
 	Finished    bool
-	Result      struct{ start, end int }
+	Result      Match
 }
 
 func NewSearch(filePath string) *search {
@@ -116,10 +120,12 @@ func (s *search) SearchRegex(ctx context.Context, regex string, out chan Result)
 
 	count := 0
 	for result := range resultChan {
+		start := s.sampleStart(result)
+		end := s.sampleEnd(result)
 		out <- Result{
 			LineNumber:  result.Line,
-			LineContent: string(s.content)[s.sampleStart(result):s.sampleEnd(result)],
-			Result:      struct{start, end int}{start: result.Start, end: result.End},
+			LineContent: string(s.content)[start:end],
+			Result:      Match{Start: result.Start - start, End: (result.Start - start) + (result.End - result.Start)},
 			Count:       count,
 			Query:       regex,
 			Finished:    false,
@@ -134,7 +140,7 @@ func (s *search) SearchRegex(ctx context.Context, regex string, out chan Result)
 
 func (s *search) sampleEnd(result finite_state_machine.Result) int {
 	end := result.End + 1 + CHAR_PADDING
-	if end >= len(s.content) {
+	if end >= len(string(s.content)) {
 		return result.End + 1
 	} else {
 		return end

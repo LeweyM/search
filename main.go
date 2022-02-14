@@ -11,6 +11,9 @@ import (
 	"strings"
 )
 
+const RED_ANSI = "\u001b[31m"
+const RESET_ANSI = "\u001b[0m"
+
 func main() {
 	input := make(chan string)
 	io := os.Stdin
@@ -53,15 +56,10 @@ func list(ctx context.Context, input chan string, sc Screen) {
 {{ end }}
 	`
 	sc.SetTemplate(templateString)
-
-	show := func(dState displayState) {
-		sc.SetState(dState)
-	}
-	show(state)
+	sc.SetState(state)
 
 	results := make(chan search.Result)
 	cancel, cancelFunc := context.WithCancel(ctx)
-
 	resultCounter := 0
 	for {
 		select {
@@ -82,7 +80,7 @@ func list(ctx context.Context, input chan string, sc Screen) {
 			} else {
 				state.Ready = false
 			}
-			show(state)
+			sc.SetState(state)
 		case r := <-results:
 			if r.Query == currentQuery {
 				resultCounter++
@@ -90,20 +88,29 @@ func list(ctx context.Context, input chan string, sc Screen) {
 					state.Done = true
 				} else {
 					if len(state.Lines) < 10 {
-						line := strings.ReplaceAll(r.LineContent, "\n", " \\n ")
+						line := buildLine(r)
 						state.Lines = append(state.Lines, fmt.Sprintf("%d: line-%s: \"%s\"", len(state.Lines), strconv.Itoa(r.LineNumber), line))
 					} else {
 						if len(state.Lines) < 11 {
 							state.Lines = append(state.Lines, "1 more element not shown")
 						}
-						state.Lines[10] =  fmt.Sprintf("%d more elements not shown", resultCounter)
+						state.Lines[10] = fmt.Sprintf("%d more elements not shown", resultCounter)
 
 					}
 				}
-				show(state)
+				sc.SetState(state)
 			}
 		}
 	}
+}
+
+func buildLine(r search.Result) string {
+	beforeMatch := r.LineContent[:r.Result.Start]
+	match := r.LineContent[r.Result.Start : r.Result.End+1]
+	afterMatch := r.LineContent[r.Result.End+1:]
+	line := beforeMatch + RED_ANSI + match + RESET_ANSI + afterMatch
+	line = strings.ReplaceAll(line, "\n", " \\n ")
+	return line
 }
 
 func count(ctx context.Context, input chan string, sc Screen) {
