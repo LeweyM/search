@@ -3,8 +3,21 @@
 ## Regex
 - [ ] Find the longest search result
 - [ ] Find multiple results
+- [ ] Test check against grep
+- [ ] Simplify NFA to DFA
+- [ ] character ranges e.g. [a-zA-Z]
+- [ ] special characters ^ and $
+- [ ] bracket sets e.g ca[tr] == ca(t|r) 
+
+## Code Search
+- [ ] trigram index
+- [ ] multi file distributed search (parallel?)
+- [ ] linux code base search (66000 files) 
 
 ## ReadTime CLI
-- [ ] updating at fixed refresh rate
-- [ ] Use templating language
+- [x] updating at fixed refresh rate
+- [x] Use templating language
 - [ ] smart overwriting instead of wiping whole screen
+- [x] color responses
+- [ ] scrollable results
+- [ ] separate input from screen
