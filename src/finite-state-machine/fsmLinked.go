@@ -69,14 +69,10 @@ func (s *StateLinked) merge(s2 *StateLinked) {
 	}
 }
 
-type branch struct {
-	currState *StateLinked
-}
-
 type runner struct {
 	head      *StateLinked
 	failState *StateLinked
-	branches  []branch
+	branches  map[*StateLinked]bool
 }
 
 func NewRunner(head *StateLinked) *runner {
@@ -85,7 +81,7 @@ func NewRunner(head *StateLinked) *runner {
 	return &runner{
 		failState: failState,
 		head:      head,
-		branches:  []branch{{currState: head}},
+		branches:  map[*StateLinked]bool{head: true},
 	}
 }
 
@@ -95,10 +91,10 @@ func (r *runner) Next(input rune) StateType {
 	r.processEpsilons()
 
 	// move along regular transitions
-	var nonFailedBranches []branch
+	var nonFailedBranches []*StateLinked // TODO: Can this be a map?
 
-	for bIndex, b := range r.branches {
-		matchingTransitions := b.currState.matchingTransitions(input)
+	for br := range r.branches {
+		matchingTransitions := br.matchingTransitions(input)
 		// if no transitions are possible, the branch has failed
 		if len(matchingTransitions) == 0 {
 			// remove failed branch
@@ -106,24 +102,22 @@ func (r *runner) Next(input rune) StateType {
 		}
 		// if there is only one transition, we move
 		if len(matchingTransitions) == 1 {
-			br := r.branches[bIndex]
-			br.currState = matchingTransitions[0]
+			br = matchingTransitions[0]
 			nonFailedBranches = append(nonFailedBranches, br)
 			continue
 		}
 		// if there are multiple transitions, we branch
-		br := r.branches[bIndex]
-		br.currState = matchingTransitions[0]
+		br = matchingTransitions[0]
 		nonFailedBranches = append(nonFailedBranches, br)
 
 		for i := 1; i < len(matchingTransitions); i++ {
-			// TODO: Trim duplicate branches here. Maybe store as a set of 'to' pointers
-			nonFailedBranches = append(nonFailedBranches, branch{
-				currState: matchingTransitions[i],
-			})
+			nonFailedBranches = append(nonFailedBranches, matchingTransitions[i])
 		}
 	}
-	r.branches = nonFailedBranches
+	r.branches = make(map[*StateLinked]bool)
+	for _, branch := range nonFailedBranches {
+		r.branches[branch] = true
+	}
 
 	// move along epsilon transitions after
 	r.processEpsilons()
@@ -131,8 +125,8 @@ func (r *runner) Next(input rune) StateType {
 	if len(r.branches) == 0 {
 		return Fail
 	}
-	for _, b := range r.branches {
-		if b.currState.isSuccessState() {
+	for b, _ := range r.branches {
+		if b.isSuccessState() {
 			return Success
 		}
 	}
@@ -140,26 +134,31 @@ func (r *runner) Next(input rune) StateType {
 }
 
 func (r *runner) processEpsilons() {
-	nextBranches := []branch{}
-	for _, br := range r.branches {
+	nextBranches := []*StateLinked{}
+	for br := range r.branches {
 		// if a branch contains an epsilon transition
-		for _, t := range br.currState.transitions1 {
+		for _, t := range br.transitions1 {
 			if t.epsilon {
 				// add it to a branch
-				nextBranches = append(nextBranches, branch{currState: t.to})
+				nextBranches = append(nextBranches, t.to)
 			}
 		}
 		nextBranches = append(nextBranches, br)
 	}
-	r.branches = nextBranches
+
+	r.branches = make(map[*StateLinked]bool)
+	for _, branch := range nextBranches {
+		r.branches[branch] = true
+	}
 }
 
 func (r *runner) Reset() {
-	r.branches = []branch{{currState: r.head}}
+	r.branches = make(map[*StateLinked]bool)
+	r.branches[r.head] = true
 }
 
-func (r *runner) onFailState(b branch) bool {
-	return b.currState == r.failState
+func (r *runner) onFailState(b *StateLinked) bool {
+	return b == r.failState
 }
 
 type builder struct {
