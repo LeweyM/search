@@ -52,14 +52,14 @@ func list(ctx context.Context, input chan string, sc Screen) {
 {{ if not .Ready }}Enter 3 letters or more to search.
 {{ else }}{{ range $i, $line := .Lines }}
 {{ $line }}{{ end }}
-... Searching
-{{ end }}
-	`
+... Searching{{ end }}`
 	sc.SetTemplate(templateString)
 	sc.SetState(state)
 
 	results := make(chan search.Result)
+	var queryResults []search.Result
 	cancel, cancelFunc := context.WithCancel(ctx)
+	offset := 0
 	resultCounter := 0
 	for {
 		select {
@@ -68,40 +68,94 @@ func list(ctx context.Context, input chan string, sc Screen) {
 			cancelFunc()
 			return
 		case t := <-input:
-			state = displayState{}
-			resultCounter = 0
-			cancelFunc()
-			cancel, cancelFunc = context.WithCancel(ctx)
-			state.Target = t
-			if len(t) >= 3 {
-				state.Ready = true
-				currentQuery = t
-				go se.SearchRegex(cancel, t, results)
-			} else {
-				state.Ready = false
-			}
-			sc.SetState(state)
-		case r := <-results:
-			if r.Query == currentQuery {
-				resultCounter++
-				if r.Finished {
-					state.Done = true
+			switch t {
+			case "LEFT", "RIGHT":
+			case "DOWN":
+				offset = min(len(queryResults)-10, offset+1)
+				state = getState(queryResults, state, offset, resultCounter)
+				sc.SetState(state)
+			case "UP":
+				offset = max(0, offset-1)
+				state = getState(queryResults, state, offset, resultCounter)
+				sc.SetState(state)
+			default:
+				state = displayState{Target: t}
+				resultCounter = 0
+				offset = 0
+				queryResults = []search.Result{}
+				cancelFunc()
+				cancel, cancelFunc = context.WithCancel(ctx)
+				if len(t) >= 3 {
+					state.Ready = true
+					currentQuery = t
+					go se.SearchRegex(cancel, t, results)
 				} else {
-					if len(state.Lines) < 10 {
-						line := buildLine(r)
-						state.Lines = append(state.Lines, fmt.Sprintf("%d: line-%s: \"%s\"", len(state.Lines), strconv.Itoa(r.LineNumber), line))
-					} else {
-						if len(state.Lines) < 11 {
-							state.Lines = append(state.Lines, "1 more element not shown")
-						}
-						state.Lines[10] = fmt.Sprintf("%d more elements not shown", resultCounter)
-
-					}
+					state.Ready = false
 				}
 				sc.SetState(state)
 			}
+		case r := <-results:
+			if r.Query != currentQuery { continue }
+			queryResults = append(queryResults, r)
+			resultCounter++
+			if r.Finished {
+				state.Done = true
+			} else {
+				state = getState(queryResults, state, offset, resultCounter)
+			}
+			sc.SetState(state)
 		}
 	}
+}
+
+func min(i, i2 int) int {
+	if i < i2 {
+		return i
+	} else {
+		return i2
+	}
+}
+
+func max(i, i2 int) int {
+	if i > i2 {
+		return i
+	} else {
+		return i2
+	}
+}
+
+func getState(queryResults []search.Result, state displayState, offset int, resultCounter int) displayState {
+	if len(queryResults) > 10 {
+		state.Lines = formatLines(queryResults[offset:offset+10], offset)
+		if len(state.Lines) < 11 {
+			state.Lines = append(state.Lines, "1 more element not shown")
+		}
+		state.Lines[10] = fmt.Sprintf("%d total results.", resultCounter)
+	} else {
+		state.Lines = formatLines(queryResults, 0)
+	}
+	return state
+}
+
+func formatLines(results []search.Result, offset int) []string {
+	res := make([]string, 0, len(results))
+	for i, r := range results {
+		res = append(res, fmt.Sprintf("%d: line-%s: \"%s\"", i+1+offset, strconv.Itoa(r.LineNumber), buildLine(r)))
+	}
+	return res
+}
+
+func updateLines(state displayState, r search.Result, resultCounter int) displayState {
+	if len(state.Lines) < 10 {
+		line := buildLine(r)
+		state.Lines = append(state.Lines, fmt.Sprintf("%d: line-%s: \"%s\"", len(state.Lines), strconv.Itoa(r.LineNumber), line))
+	} else {
+		if len(state.Lines) < 11 {
+			state.Lines = append(state.Lines, "1 more element not shown")
+		}
+		state.Lines[10] = fmt.Sprintf("%d more elements not shown", resultCounter)
+	}
+	return state
 }
 
 func buildLine(r search.Result) string {
@@ -110,6 +164,9 @@ func buildLine(r search.Result) string {
 	afterMatch := r.LineContent[r.Result.End+1:]
 	line := beforeMatch + RED_ANSI + match + RESET_ANSI + afterMatch
 	line = strings.ReplaceAll(line, "\n", " \\n ")
+	if len(line) > 300 {
+		line = line[:300] + RESET_ANSI
+	}
 	return line
 }
 

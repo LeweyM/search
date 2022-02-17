@@ -99,10 +99,20 @@ func (s *screen) readInput(ctx context.Context, ticker *time.Ticker, in io.RuneR
 	}
 }
 
+const (
+	UP = "UP"
+	DOWN = "DOWN"
+	LEFT = "LEFT"
+	RIGHT = "RIGHT"
+)
+
 func (s *screen) update(ctx context.Context, ticker *time.Ticker) {
 	var linesL []string
 	var inputL string
 	hasChanged := true
+
+	flag1 := false
+	flag2 := false
 
 	for {
 		select {
@@ -124,13 +134,32 @@ func (s *screen) update(ctx context.Context, ticker *time.Ticker) {
 				s.output <- inputL
 				continue
 			}
-			//// non-alphanumeric numbers
-			//if r < 65 || r > 122 {
-			//	continue
-			//}
-			inputL = inputL + string(r)
-			hasChanged = false
-			s.output <- inputL
+			// arrows
+			if r == 27 {
+				flag1 = true
+			}
+			if flag1 && r == 91 {
+				flag2 = true
+				continue
+			}
+			if r >= 65 && r <= 68 && flag1 && flag2 {
+				switch r {
+				// TODO: This introduces a bug as "UP" input is same as arrow "UP"
+				case 65: s.output <- UP
+				case 66: s.output <- DOWN
+				case 67: s.output <- RIGHT
+				case 68: s.output <- LEFT
+				}
+				flag1 = false
+				flag2 = false
+				continue
+			}
+			// alphanumeric numbers
+			if r >= 32 && r <= 127 {
+				inputL = inputL + string(r)
+				hasChanged = false
+				s.output <- inputL
+			}
 		case <-ticker.C:
 			if hasChanged {
 				s.refresh(ctx, state{
