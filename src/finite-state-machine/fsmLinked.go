@@ -21,6 +21,16 @@ type StateLinked struct {
 
 type destination *StateLinked
 
+func (s *StateLinked) matchingTransitionsNEW(input rune) []transitionLinked {
+	var matchingTransitions []transitionLinked
+	for _, t := range s.transitions1 {
+		if t.predicate != nil && t.predicate(input) {
+			matchingTransitions = append(matchingTransitions, t)
+		}
+	}
+	return matchingTransitions
+}
+
 func (s *StateLinked) matchingTransitions(input rune) []destination {
 	var matchingTransitions []destination
 	for _, t := range s.transitions1 {
@@ -82,7 +92,7 @@ func NewRunner(head *StateLinked) *runner {
 func (r *runner) Next(input rune) StateType {
 	// move along epsilon transitions first.
 	// This is probably inefficient and could be moved into the main loop.
-	r.processEpsilons(input, r.branches)
+	r.processEpsilons()
 
 	// move along regular transitions
 	var nonFailedBranches []branch
@@ -116,7 +126,7 @@ func (r *runner) Next(input rune) StateType {
 	r.branches = nonFailedBranches
 
 	// move along epsilon transitions after
-	r.processEpsilons(input, r.branches)
+	r.processEpsilons()
 
 	if len(r.branches) == 0 {
 		return Fail
@@ -129,22 +139,19 @@ func (r *runner) Next(input rune) StateType {
 	return Normal
 }
 
-func (r *runner) processEpsilons(input rune, branches []branch) {
-	for bIndex := range branches {
-		matchingTransitions := r.branches[bIndex].currState.matchingTransitions(input)
-
-		for _, t := range r.branches[bIndex].currState.transitions1 {
+func (r *runner) processEpsilons() {
+	nextBranches := []branch{}
+	for _, br := range r.branches {
+		// if a branch contains an epsilon transition
+		for _, t := range br.currState.transitions1 {
 			if t.epsilon {
-				if len(matchingTransitions) == 1 {
-					r.branches[bIndex].currState = t.to
-				} else if len(matchingTransitions) > 1 {
-					r.branches = append(r.branches, branch{
-						currState: t.to,
-					})
-				}
+				// add it to a branch
+				nextBranches = append(nextBranches, branch{currState: t.to})
 			}
 		}
+		nextBranches = append(nextBranches, br)
 	}
+	r.branches = nextBranches
 }
 
 func (r *runner) Reset() {

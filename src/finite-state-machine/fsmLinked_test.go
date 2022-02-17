@@ -42,7 +42,7 @@ func TestCharacterwithwildcardmodifier(t *testing.T) {
 		testCompiledMachine(t, tt.regex, fsmTest{s: tt.input, expectedResults: tt.expectedResults})
 	}
 }
-func TestDeeplynestedcatenation(t *testing.T) {
+func TestDeeplyNestedCatenation(t *testing.T) {
 	for _, tt := range []compiledTest{
 		{regex: "(((ab)(c)d)|(fg))", input: "abcd", expectedResults: []localResult{{0, 3}}},
 		{regex: "(((ab)(c)d)|(fg))", input: "fg", expectedResults: []localResult{{0, 1}}},
@@ -104,7 +104,7 @@ func TestCharacterWithZeroOrOneModifier(t *testing.T) {
 		{regex: "cats?", input: "cat", expectedResults: []localResult{{0, 2}}},
 		{regex: "cats?", input: "cats", expectedResults: []localResult{{0, 2}}}, // too greedy
 
-		{regex: "sodomite", input: "sodomites?", expectedResults: []localResult{{0, 7}}},
+		{regex: "held?p?", input: "held", expectedResults: []localResult{{0, 3}}},
 	} {
 		testCompiledMachine(t, tt.regex, fsmTest{s: tt.input, expectedResults: tt.expectedResults})
 	}

@@ -2,7 +2,7 @@ package finite_state_machine
 
 import "fmt"
 
-const DEBUG = false
+const DEBUG = true
 
 func Compile(input string) *StateLinked {
 	symbols := lex(input)
@@ -121,7 +121,7 @@ func (s *stackCompiler) compile(symbols []symbol) *StateLinked {
 func getDescription(symbol symbol) string {
 	var desc string
 	if DEBUG {
-		desc = fmt.Sprintf("to -> %d", symbol.letter)
+		desc = fmt.Sprintf("to -> %s", string(symbol.letter))
 	} else {
 		desc = "to -> letter"
 	}
