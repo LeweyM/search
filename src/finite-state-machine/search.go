@@ -13,7 +13,7 @@ type Machine interface {
 
 func FindAllAsync(ctx context.Context, finiteStateMachine Machine, searchString string, out chan Result) {
 	defer close(out)
-	lineCounter := 0
+	lineCounter := 1
 	start := 0
 	end := 0
 	runes := append([]rune(searchString), 0) // we add a 'NULL' 0 rune at the End so that even empty string inputs are processed.
@@ -24,7 +24,7 @@ func FindAllAsync(ctx context.Context, finiteStateMachine Machine, searchString 
 			return
 		default:
 			char := runes[end]
-			if char == '\n' {
+			if !hasRerunFail && char == '\n' {
 				lineCounter++
 			}
 			currentState := finiteStateMachine.Next(char)
