@@ -52,14 +52,18 @@ func TestDeeplyNestedCatenation(t *testing.T) {
 		testCompiledMachine(t, tt.regex, fsmTest{s: tt.input, expectedResults: tt.expectedResults})
 	}
 }
-func TestMultiplepipebranches(t *testing.T) {
+func TestMultiplePipeBranches(t *testing.T) {
 	for _, tt := range []compiledTest{
 		{regex: "abc|def|xyz", input: "abc", expectedResults: []localResult{{0, 2}}},
 		{regex: "abc|def|xyz", input: "def", expectedResults: []localResult{{0, 2}}},
 		{regex: "abc|def|xyz", input: "xyz", expectedResults: []localResult{{0, 2}}},
 		{regex: "abc|abx|aby|abz", input: "abz", expectedResults: []localResult{{0, 2}}},
 		{regex: "abc|abx|aby|abz", input: "abc", expectedResults: []localResult{{0, 2}}},
-		{regex: "abc|abx|aby|abz", input: "abr", expectedResults: []localResult{}},
+		{regex: "abc|abx|aby|abz", input: "abr"},
+
+		{regex: "(l|L)et", input: "light"},
+		{regex: "(l|L)et", input: "let", expectedResults: []localResult{{0, 2}}},
+		{regex: "(l|L)et", input: "Let", expectedResults: []localResult{{0, 2}}},
 	} {
 		testCompiledMachine(t, tt.regex, fsmTest{s: tt.input, expectedResults: tt.expectedResults})
 	}

@@ -38,31 +38,42 @@ func (s *stackCompiler) compile(symbols []symbol) *StateLinked {
 		case LParen:
 			s.push(&StateLinked{})
 		case RParen:
-			// s1 (1) -a-> (2) -b-> (3)     -- main branch being processed inside the parens
-			// s2 (4) -x-> (5)              -- outer branch which has been pushed to the stack
+			// x(ab)
+			// inner (1) -a-> (2) -b-> (3)     -- main branch being processed inside the parens
+			// outer (4) -x-> (5)              -- outer branch which has been pushed to the stack
 			//
 			// becomes
 			//
 			// (4) -x-> (5/1) -a-> (2) -b-> (3)  -- the end of 2nd branch is merged with beginning of 1st branch
 
-			s1 := s.pop()
-			s2 := s.pop()
-			s2Tail := tail(s2)
-			s2Tail.merge(s1)
+			// 1. join the ends of the inner branches with epsilons
+			inner := s.pop()
+			innerTails := tails(inner)
+			if len(innerTails) > 1 {
+				for _, innerTail := range innerTails[1:] {
+					firstInnerTail := innerTails[0]
+					innerTail.transitions1 = append(innerTail.transitions1, NewEpsilon(firstInnerTail))
+				}
+			}
+
+			// 2. merge the end of the outer branch to the beginning of the inner branch
+			outer := s.pop()
+			outerTail := tail(outer)
+			outerTail.merge(inner)
 			// peek ahead
 			if len(symbols) > 1 && symbols[1].symbolType == ZeroOrMore {
-				// s1 (1) -a-> (2) -b-> (3)     -- main branch being processed inside the parens
-				// s2 (4) -x-> (5)              -- outer branch which has been pushed to the stack
+				// inner (1) -a-> (2) -b-> (3)     -- main branch being processed inside the parens
+				// outer (4) -x-> (5)              -- outer branch which has been pushed to the stack
 				//
 				// becomes
 				//
 				// (4) -x-> (5/1) -a-> (2) -b-> (3)  -- the end of 2nd branch is merged with beginning of 1st branch
 				//                ------------>      -- unconditional direct path to end state if 0 (ab)s
 				//								     -- ? should there be a recursive path back also? It will not be rung as it is greedy however...
-				s2Tail.transitions1 = append(s2Tail.transitions1, transitionLinked{to: tail(s1), predicate: func(input rune) bool { return true }, description: "to -> ."})
+				outerTail.transitions1 = append(outerTail.transitions1, transitionLinked{to: tail(inner), predicate: func(input rune) bool { return true }, description: "to -> ."})
 				symbols = symbols[1:]
 			}
-			s.push(s2)
+			s.push(outer)
 		// branch
 		case Pipe:
 			s1 := s.pop()
@@ -130,6 +141,19 @@ func getDescription(symbol symbol) string {
 
 func tail(s *StateLinked) *StateLinked {
 	return tailN(s, 0)
+}
+
+func tails(s *StateLinked) []*StateLinked {
+	if s.empty || len(s.transitions1) == 0 {
+		return []*StateLinked{s}
+	}
+
+	var l []*StateLinked
+	for _, t := range s.transitions1 {
+		l = append(l, tails(t.to)...)
+	}
+
+	return l
 }
 
 func tailN(s *StateLinked, lag int) *StateLinked {

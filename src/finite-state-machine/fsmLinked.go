@@ -13,6 +13,15 @@ type transitionLinked struct {
 	epsilon     bool
 }
 
+func NewEpsilon(to *StateLinked) transitionLinked {
+	return transitionLinked{
+		to:          to,
+		predicate:   func(input rune) bool { return true },
+		description: "epsilon",
+		epsilon:     true,
+	}
+}
+
 type StateLinked struct {
 	empty        bool
 	id           int
@@ -61,11 +70,7 @@ func (s *StateLinked) merge(s2 *StateLinked) {
 	}
 	for _, t := range s2.transitions1 {
 		// when composing a transition, we merge the first transitions of the new state into the transition of the from state
-		s.transitions1 = append(s.transitions1, transitionLinked{
-			description: t.description,
-			to:          t.to,
-			predicate:   t.predicate,
-		})
+		s.transitions1 = append(s.transitions1, t)
 	}
 }
 
