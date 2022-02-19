@@ -145,19 +145,6 @@ func formatLines(results []search.Result, offset int) []string {
 	return res
 }
 
-func updateLines(state displayState, r search.Result, resultCounter int) displayState {
-	if len(state.Lines) < 10 {
-		line := buildLine(r)
-		state.Lines = append(state.Lines, fmt.Sprintf("%d: line-%s: \"%s\"", len(state.Lines), strconv.Itoa(r.LineNumber), line))
-	} else {
-		if len(state.Lines) < 11 {
-			state.Lines = append(state.Lines, "1 more element not shown")
-		}
-		state.Lines[10] = fmt.Sprintf("%d more elements not shown", resultCounter)
-	}
-	return state
-}
-
 func buildLine(r search.Result) string {
 	beforeMatch := r.LineContent[:r.Result.Start]
 	match := r.LineContent[r.Result.Start : r.Result.End+1]

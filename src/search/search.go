@@ -92,7 +92,7 @@ func (s *search) Search(ctx context.Context, target string, out chan Result) {
 				line++
 			}
 			if i+len(target) <= len(s.content) && string(s.content[i:i+len(target)]) == target {
-				//time.Sleep(time.Duration(rand.Intn(50)) * time.Millisecond)
+				//time.Sleep(time.Duration(rand.Intn(50)) * time.Millisecond) // for simulating slower search results
 				out <- Result{
 					Finished:    false,
 					Query:       target,

@@ -22,6 +22,28 @@ func NewEpsilon(to *StateLinked) transitionLinked {
 	}
 }
 
+type branchSet struct{ set map[*StateLinked]bool }
+
+func newBranchSet() *branchSet {
+	return &branchSet{set: make(map[*StateLinked]bool)}
+}
+
+func (b *branchSet) add(state *StateLinked) {
+	b.set[state] = true
+}
+
+func (b *branchSet) contains(state *StateLinked) bool {
+	return b.set[state]
+}
+
+func (b *branchSet) remove(state *StateLinked) {
+	delete(b.set, state)
+}
+
+func (b *branchSet) getSet() map[*StateLinked]bool {
+	return b.set
+}
+
 type StateLinked struct {
 	empty        bool
 	id           int
@@ -29,16 +51,6 @@ type StateLinked struct {
 }
 
 type destination *StateLinked
-
-func (s *StateLinked) matchingTransitionsNEW(input rune) []transitionLinked {
-	var matchingTransitions []transitionLinked
-	for _, t := range s.transitions1 {
-		if t.predicate != nil && t.predicate(input) {
-			matchingTransitions = append(matchingTransitions, t)
-		}
-	}
-	return matchingTransitions
-}
 
 func (s *StateLinked) matchingTransitions(input rune) []destination {
 	var matchingTransitions []destination
@@ -77,7 +89,7 @@ func (s *StateLinked) merge(s2 *StateLinked) {
 type runner struct {
 	head      *StateLinked
 	failState *StateLinked
-	branches  map[*StateLinked]bool
+	branches  *branchSet
 }
 
 func NewRunner(head *StateLinked) *runner {
@@ -86,7 +98,7 @@ func NewRunner(head *StateLinked) *runner {
 	return &runner{
 		failState: failState,
 		head:      head,
-		branches:  map[*StateLinked]bool{head: true},
+		branches:  newBranchSet(),
 	}
 }
 
@@ -96,41 +108,22 @@ func (r *runner) Next(input rune) StateType {
 	r.processEpsilons()
 
 	// move along regular transitions
-	var nonFailedBranches []*StateLinked // TODO: Can this be a map?
-
-	for br := range r.branches {
-		matchingTransitions := br.matchingTransitions(input)
-		// if no transitions are possible, the branch has failed
-		if len(matchingTransitions) == 0 {
-			// remove failed branch
-			continue
-		}
-		// if there is only one transition, we move
-		if len(matchingTransitions) == 1 {
-			br = matchingTransitions[0]
-			nonFailedBranches = append(nonFailedBranches, br)
-			continue
-		}
-		// if there are multiple transitions, we branch
-		br = matchingTransitions[0]
-		nonFailedBranches = append(nonFailedBranches, br)
-
-		for i := 1; i < len(matchingTransitions); i++ {
-			nonFailedBranches = append(nonFailedBranches, matchingTransitions[i])
+	var nonFailedBranches = newBranchSet()
+	for br := range r.branches.set {
+		for _, destinationState := range br.matchingTransitions(input) {
+			nonFailedBranches.add(destinationState)
 		}
 	}
-	r.branches = make(map[*StateLinked]bool)
-	for _, branch := range nonFailedBranches {
-		r.branches[branch] = true
-	}
+
+	r.branches = nonFailedBranches
 
 	// move along epsilon transitions after
 	r.processEpsilons()
 
-	if len(r.branches) == 0 {
+	if len(r.branches.set) == 0 {
 		return Fail
 	}
-	for b, _ := range r.branches {
+	for b := range r.branches.set {
 		if b.isSuccessState() {
 			return Success
 		}
@@ -139,27 +132,24 @@ func (r *runner) Next(input rune) StateType {
 }
 
 func (r *runner) processEpsilons() {
-	nextBranches := []*StateLinked{}
-	for br := range r.branches {
+	nextBranches := newBranchSet()
+	for br := range r.branches.set {
 		// if a branch contains an epsilon transition
 		for _, t := range br.transitions1 {
 			if t.epsilon {
 				// add it to a branch
-				nextBranches = append(nextBranches, t.to)
+				nextBranches.add(t.to)
 			}
 		}
-		nextBranches = append(nextBranches, br)
+		nextBranches.add(br)
 	}
 
-	r.branches = make(map[*StateLinked]bool)
-	for _, branch := range nextBranches {
-		r.branches[branch] = true
-	}
+	r.branches = nextBranches
 }
 
 func (r *runner) Reset() {
-	r.branches = make(map[*StateLinked]bool)
-	r.branches[r.head] = true
+	r.branches = newBranchSet()
+	r.branches.add(r.head)
 }
 
 func (r *runner) onFailState(b *StateLinked) bool {
