@@ -120,12 +120,12 @@ func (s *search) SearchRegex(ctx context.Context, regex string, out chan Result)
 
 	count := 0
 	for result := range resultChan {
-		start := s.sampleStart(result)
-		end := s.sampleEnd(result)
+		//start := s.sampleStart(result)
+		//end := s.sampleEnd(result)
 		out <- Result{
 			LineNumber:  result.Line,
-			LineContent: string(s.content)[start:end],
-			Result:      Match{Start: result.Start - start, End: (result.Start - start) + (result.End - result.Start)},
+			LineContent: s.lines[result.Line-1],
+			Result:      Match{Start: result.Start, End: result.End},
 			Count:       count,
 			Query:       regex,
 			Finished:    false,

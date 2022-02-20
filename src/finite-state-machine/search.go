@@ -16,6 +16,7 @@ func FindAllAsync(ctx context.Context, finiteStateMachine Machine, searchString 
 	lineCounter := 1
 	start := 0
 	end := 0
+	lineStart := 0
 	runes := append([]rune(searchString), 0) // we add a 'NULL' 0 rune at the End so that even empty string inputs are processed.
 	hasRerunFail := false
 	for end < len(runes) {
@@ -25,12 +26,15 @@ func FindAllAsync(ctx context.Context, finiteStateMachine Machine, searchString 
 		default:
 			char := runes[end]
 			if !hasRerunFail && char == '\n' {
+				// Like grep, don't search for matches across lines.
+				finiteStateMachine.Reset()
 				lineCounter++
+				lineStart = end + 1
 			}
 			currentState := finiteStateMachine.Next(char)
 			switch currentState {
 			case Success:
-				out <- Result{Start: start, End: end, Line: lineCounter}
+				out <- Result{Start: start - lineStart, End: end - lineStart, Line: lineCounter}
 				finiteStateMachine.Reset()
 				end++
 				start = end
