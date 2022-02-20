@@ -70,7 +70,7 @@ func (s *stackCompiler) compile(symbols []symbol) *StateLinked {
 				// (4) -x-> (5/1) -a-> (2) -b-> (3)  -- the end of 2nd branch is merged with beginning of 1st branch
 				//                ------------>      -- unconditional direct path to end state if 0 (ab)s
 				//								     -- ? should there be a recursive path back also? It will not be rung as it is greedy however...
-				outerTail.transitions = append(outerTail.transitions, TransitionLinked{to: tail(inner), predicate: func(input rune) bool { return true }, description: "to -> ."})
+				outerTail.transitions = append(outerTail.transitions, Transition{to: tail(inner), predicate: func(input rune) bool { return true }, description: "to -> ."})
 				symbols = symbols[1:]
 			}
 			s.push(outer)
@@ -78,7 +78,7 @@ func (s *stackCompiler) compile(symbols []symbol) *StateLinked {
 		case Pipe:
 			s1 := s.pop()
 			// transition with empty 'to' will be start of new branch
-			s1.transitions = append([]TransitionLinked{{to: &StateLinked{empty: true}}}, s1.transitions...)
+			s1.transitions = append([]Transition{{to: &StateLinked{empty: true}}}, s1.transitions...)
 			s.push(s1)
 		// concatenation
 		case Character:
@@ -103,7 +103,7 @@ func (s *stackCompiler) compile(symbols []symbol) *StateLinked {
 			oneBeforeTail := tailN(s1, 1)
 			oneBeforeTail.transitions[0].to = oneBeforeTail
 			// make sure the main branch is nil
-			oneBeforeTail.transitions = append([]TransitionLinked{{to: &StateLinked{empty: true}}}, oneBeforeTail.transitions...)
+			oneBeforeTail.transitions = append([]Transition{{to: &StateLinked{empty: true}}}, oneBeforeTail.transitions...)
 			s.push(s1)
 		case OneOrMore:
 			// (1) -a-> (2)				-- from a simple starting state
@@ -112,7 +112,7 @@ func (s *stackCompiler) compile(symbols []symbol) *StateLinked {
 			// grab the transition leading to the tail state. That is, grab the first transition from tail - 1.
 			leadingTransition := tailN(s1, 1).transitions[0]
 			// copy that transition to a secondary branch on the tail
-			tail(s1).transitions = append([]TransitionLinked{{to: &StateLinked{empty: true}}}, leadingTransition)
+			tail(s1).transitions = append([]Transition{{to: &StateLinked{empty: true}}}, leadingTransition)
 			s.push(s1)
 		case ZeroOrOne:
 			// (1) -a-> (2)				-- from a simple starting state
@@ -120,7 +120,7 @@ func (s *stackCompiler) compile(symbols []symbol) *StateLinked {
 			//     -a->					-- add an epsilon transition to state 2
 			s1 := s.pop()
 			tail1 := tailN(s1, 1)
-			epsilon := TransitionLinked{to: tail(s1), predicate: func(r rune) bool { return true }, description: "epsilon", epsilon: true}
+			epsilon := Transition{to: tail(s1), predicate: func(r rune) bool { return true }, description: "epsilon", epsilon: true}
 			tail1.transitions = append(tail1.transitions, epsilon)
 			s.push(s1)
 		}
@@ -171,7 +171,7 @@ func tailN(s *StateLinked, lag int) *StateLinked {
 }
 
 func (s *stackCompiler) append(s1 *StateLinked, s2 *StateLinked, predicate Predicate, description string) {
-	t := TransitionLinked{
+	t := Transition{
 		to:          s2,
 		predicate:   predicate,
 		description: description,

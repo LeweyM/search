@@ -1,7 +1,5 @@
 package finite_state_machine
 
-const InitialState = 1
-
 type StateType int
 
 const (
@@ -10,126 +8,64 @@ const (
 	Normal
 )
 
-type transition struct {
-	to    int
-	input rune
+type Predicate func(input rune) bool
+
+type Transition struct {
+	// to: a pointer to the next state
+	to destination
+	// predicate: a function to determine if the runner should move to the next state
+	predicate   Predicate
+	description string
+	epsilon     bool
 }
 
-type machineTransition struct {
-	next *machine
-	to   int
-}
-
-type wildTransition int
-
-type state struct {
-	transitions        []transition
-	wildTransition     *wildTransition
-	stateType          StateType
-	machineTransitions []machineTransition
-}
-
-type machine struct {
-	states       []state
-	currentState int
-}
-
-func NewMachine(n int) *machine {
-	var states []state
-	states = append(states, state{
-		transitions: []transition{},
-		stateType:   Fail,
-	})
-	for i := 0; i < n; i++ {
-		var transitions []transition
-		states = append(states, state{
-			transitions: transitions,
-			stateType:   Normal,
-		})
-	}
-	return &machine{
-		states:       states,
-		currentState: InitialState,
+func NewEpsilon(to *StateLinked) Transition {
+	return Transition{
+		to:          to,
+		predicate:   func(input rune) bool { return true },
+		description: "epsilon",
+		epsilon:     true,
 	}
 }
 
-func (m *machine) AddTransition(from, to int, input rune) *machine {
-	m.states[from].transitions = append(m.states[from].transitions, transition{
-		to:    to,
-		input: input,
-	})
-	return m
+type StateLinked struct {
+	empty        bool
+	id          int
+	transitions []Transition
 }
 
-func (m *machine) SetSuccess(state int) *machine {
-	m.states[state].stateType = Success
-	return m
-}
+type destination *StateLinked
 
-func (m *machine) Next(input rune) StateType {
-	var hasTransition bool
-	for _, t := range m.states[m.currentState].transitions {
-		if t.input == input {
-			hasTransition = true
-			m.currentState = t.to
-			break
+func (s *StateLinked) matchingTransitions(input rune) []destination {
+	var matchingTransitions []destination
+	for _, t := range s.transitions {
+		if t.predicate != nil && t.predicate(input) {
+			matchingTransitions = append(matchingTransitions, t.to)
 		}
 	}
+	return matchingTransitions
+}
 
-	// if state has machine transitions, delegate to those sub machines
-	currState := m.currentState
-	failingSubstatesCount := 0
-	for i := range m.states[currState].machineTransitions {
-		stateType := m.states[currState].machineTransitions[i].next.Next(input)
-		if stateType == Fail {
-			failingSubstatesCount++
-			if failingSubstatesCount == len(m.states[currState].machineTransitions) {
-				hasTransition = false
-				break
+func (s *StateLinked) isSuccessState() bool {
+	if len(s.transitions) == 0 {
+		return true
+	} else {
+		// not efficient
+		for _, linked := range s.transitions {
+			if linked.to.empty {
+				return true
 			}
-		} else if stateType == Success {
-			m.currentState = m.states[currState].machineTransitions[i].to
-			// jumps at the first successful sub machine
-			hasTransition = true
-			break
 		}
-		hasTransition = true
-	}
-
-	// Decision: normal transitions take precedence over wild transitions
-	if !hasTransition && m.states[m.currentState].wildTransition != nil {
-		m.currentState = int(*m.states[m.currentState].wildTransition)
-		hasTransition = true
-	}
-
-	// having no transition means the fsm enters a failed state
-	if !hasTransition {
-		m.currentState = 0
-	}
-
-	return m.states[m.currentState].stateType
-}
-func (m *machine) Reset() {
-	m.currentState = InitialState
-
-	// Also reset all sub machines
-	for i := range m.states {
-		for j := range m.states[i].machineTransitions {
-			m.states[i].machineTransitions[j].next.Reset()
-		}
+		return false
 	}
 }
 
-func (m *machine) AddWildTransition(from, to int) *machine {
-	w := wildTransition(to)
-	m.states[from].wildTransition = &w
-	return m
-}
-
-func (m *machine) AddMachineTransition(from, to int, next *machine) *machine {
-	m.states[from].machineTransitions = append(m.states[from].machineTransitions, machineTransition{
-		next: next,
-		to:   to,
-	})
-	return m
+func (s *StateLinked) merge(s2 *StateLinked) {
+	if s2.transitions[0].to.empty {
+		s2.transitions = s2.transitions[1:]
+	}
+	for _, t := range s2.transitions {
+		// when composing a transition, we merge the first transitions of the new state into the transition of the from state
+		s.transitions = append(s.transitions, t)
+	}
 }
