@@ -108,7 +108,10 @@ func TestCharacterWithZeroOrOneModifier(t *testing.T) {
 		{regex: "cats?", input: "cat", expectedResults: []localResult{{0, 2}}},
 		{regex: "cats?", input: "cats", expectedResults: []localResult{{0, 2}}}, // too greedy
 
-		{regex: "held?p?", input: "held", expectedResults: []localResult{{0, 3}}},
+		{regex: "held?p?", input: "held", expectedResults: []localResult{{0, 2}}}, // too greedy
+		{regex: "held?p?", input: "help", expectedResults: []localResult{{0, 2}}}, // too greedy
+		{regex: "held?p?", input: "hel.", expectedResults: []localResult{{0, 2}}},
+		{regex: "held?p?", input: "helt", expectedResults: []localResult{{0, 2}}},
 	} {
 		testCompiledMachine(t, tt.regex, fsmTest{s: tt.input, expectedResults: tt.expectedResults})
 	}
