@@ -2,7 +2,7 @@ package finite_state_machine
 
 type Predicate func(input rune) bool
 
-type transitionLinked struct {
+type TransitionLinked struct {
 	// to: a pointer to the next state
 	to destination
 	// predicate: a function to determine if the runner should move to the next state
@@ -11,8 +11,8 @@ type transitionLinked struct {
 	epsilon     bool
 }
 
-func NewEpsilon(to *StateLinked) transitionLinked {
-	return transitionLinked{
+func NewEpsilon(to *StateLinked) TransitionLinked {
+	return TransitionLinked{
 		to:          to,
 		predicate:   func(input rune) bool { return true },
 		description: "epsilon",
@@ -22,15 +22,15 @@ func NewEpsilon(to *StateLinked) transitionLinked {
 
 type StateLinked struct {
 	empty        bool
-	id           int
-	transitions1 []transitionLinked
+	id          int
+	transitions []TransitionLinked
 }
 
 type destination *StateLinked
 
 func (s *StateLinked) matchingTransitions(input rune) []destination {
 	var matchingTransitions []destination
-	for _, t := range s.transitions1 {
+	for _, t := range s.transitions {
 		if t.predicate != nil && t.predicate(input) {
 			matchingTransitions = append(matchingTransitions, t.to)
 		}
@@ -39,11 +39,11 @@ func (s *StateLinked) matchingTransitions(input rune) []destination {
 }
 
 func (s *StateLinked) isSuccessState() bool {
-	if len(s.transitions1) == 0 {
+	if len(s.transitions) == 0 {
 		return true
 	} else {
 		// not efficient
-		for _, linked := range s.transitions1 {
+		for _, linked := range s.transitions {
 			if linked.to.empty {
 				return true
 			}
@@ -53,11 +53,11 @@ func (s *StateLinked) isSuccessState() bool {
 }
 
 func (s *StateLinked) merge(s2 *StateLinked) {
-	if s2.transitions1[0].to.empty {
-		s2.transitions1 = s2.transitions1[1:]
+	if s2.transitions[0].to.empty {
+		s2.transitions = s2.transitions[1:]
 	}
-	for _, t := range s2.transitions1 {
+	for _, t := range s2.transitions {
 		// when composing a transition, we merge the first transitions of the new state into the transition of the from state
-		s.transitions1 = append(s.transitions1, t)
+		s.transitions = append(s.transitions, t)
 	}
 }

@@ -17,7 +17,7 @@ func NewStateLinkedBuilder() *builder {
 func (b *builder) AddTransition(from, to int, letter rune) *builder {
 	b.fillEmptyStatesTo(to)
 	b.fillEmptyStatesTo(from)
-	b.states[from].transitions1 = append(b.states[from].transitions1, transitionLinked{
+	b.states[from].transitions = append(b.states[from].transitions, TransitionLinked{
 		description: fmt.Sprintf("Matches: '%s'", string(letter)),
 		to:          b.states[to],
 		predicate:   func(input rune) bool { return input == letter },
@@ -28,7 +28,7 @@ func (b *builder) AddTransition(from, to int, letter rune) *builder {
 func (b *builder) AddWildTransition(from, to int) *builder {
 	b.fillEmptyStatesTo(to)
 	b.fillEmptyStatesTo(from)
-	b.states[from].transitions1 = append(b.states[from].transitions1, transitionLinked{
+	b.states[from].transitions = append(b.states[from].transitions, TransitionLinked{
 		description: fmt.Sprintf("Matches anything"),
 		to:          b.states[to],
 		predicate:   func(input rune) bool { return true },
@@ -38,9 +38,9 @@ func (b *builder) AddWildTransition(from, to int) *builder {
 
 func (b *builder) AddMachineTransition(from int, state *StateLinked) *builder {
 	b.fillEmptyStatesTo(from)
-	for _, t := range state.transitions1 {
+	for _, t := range state.transitions {
 		// when composing a transition, we merge the first transitions of the new state into the transition of the from state
-		b.states[from].transitions1 = append(b.states[from].transitions1, transitionLinked{
+		b.states[from].transitions = append(b.states[from].transitions, TransitionLinked{
 			description: t.description,
 			to:          t.to,
 			predicate:   t.predicate,

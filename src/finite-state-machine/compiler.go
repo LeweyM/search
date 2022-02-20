@@ -28,7 +28,7 @@ func (s *stackCompiler) push(linked *StateLinked) {
 
 func (s *stackCompiler) compile(symbols []symbol) *StateLinked {
 	head := &StateLinked{
-		transitions1: nil,
+		transitions: nil,
 	}
 	s.push(head) // starting state
 
@@ -52,7 +52,7 @@ func (s *stackCompiler) compile(symbols []symbol) *StateLinked {
 			if len(innerTails) > 1 {
 				for _, innerTail := range innerTails[1:] {
 					firstInnerTail := innerTails[0]
-					innerTail.transitions1 = append(innerTail.transitions1, NewEpsilon(firstInnerTail))
+					innerTail.transitions = append(innerTail.transitions, NewEpsilon(firstInnerTail))
 				}
 			}
 
@@ -70,7 +70,7 @@ func (s *stackCompiler) compile(symbols []symbol) *StateLinked {
 				// (4) -x-> (5/1) -a-> (2) -b-> (3)  -- the end of 2nd branch is merged with beginning of 1st branch
 				//                ------------>      -- unconditional direct path to end state if 0 (ab)s
 				//								     -- ? should there be a recursive path back also? It will not be rung as it is greedy however...
-				outerTail.transitions1 = append(outerTail.transitions1, transitionLinked{to: tail(inner), predicate: func(input rune) bool { return true }, description: "to -> ."})
+				outerTail.transitions = append(outerTail.transitions, TransitionLinked{to: tail(inner), predicate: func(input rune) bool { return true }, description: "to -> ."})
 				symbols = symbols[1:]
 			}
 			s.push(outer)
@@ -78,7 +78,7 @@ func (s *stackCompiler) compile(symbols []symbol) *StateLinked {
 		case Pipe:
 			s1 := s.pop()
 			// transition with empty 'to' will be start of new branch
-			s1.transitions1 = append([]transitionLinked{{to: &StateLinked{empty: true}}}, s1.transitions1...)
+			s1.transitions = append([]TransitionLinked{{to: &StateLinked{empty: true}}}, s1.transitions...)
 			s.push(s1)
 		// concatenation
 		case Character:
@@ -101,18 +101,18 @@ func (s *stackCompiler) compile(symbols []symbol) *StateLinked {
 			s1 := s.pop()
 			// make a tail of s1 with a loop to itself
 			oneBeforeTail := tailN(s1, 1)
-			oneBeforeTail.transitions1[0].to = oneBeforeTail
+			oneBeforeTail.transitions[0].to = oneBeforeTail
 			// make sure the main branch is nil
-			oneBeforeTail.transitions1 = append([]transitionLinked{{to: &StateLinked{empty: true}}}, oneBeforeTail.transitions1...)
+			oneBeforeTail.transitions = append([]TransitionLinked{{to: &StateLinked{empty: true}}}, oneBeforeTail.transitions...)
 			s.push(s1)
 		case OneOrMore:
 			// (1) -a-> (2)				-- from a simple starting state
 			// (1) -a-> (2) <-a- 		-- to a simple concatenation but with a recursive self definition
 			s1 := s.pop()
 			// grab the transition leading to the tail state. That is, grab the first transition from tail - 1.
-			leadingTransition := tailN(s1, 1).transitions1[0]
+			leadingTransition := tailN(s1, 1).transitions[0]
 			// copy that transition to a secondary branch on the tail
-			tail(s1).transitions1 = append([]transitionLinked{{to: &StateLinked{empty: true}}}, leadingTransition)
+			tail(s1).transitions = append([]TransitionLinked{{to: &StateLinked{empty: true}}}, leadingTransition)
 			s.push(s1)
 		case ZeroOrOne:
 			// (1) -a-> (2)				-- from a simple starting state
@@ -120,8 +120,8 @@ func (s *stackCompiler) compile(symbols []symbol) *StateLinked {
 			//     -a->					-- add an epsilon transition to state 2
 			s1 := s.pop()
 			tail1 := tailN(s1, 1)
-			epsilon := transitionLinked{to: tail(s1), predicate: func(r rune) bool { return true }, description: "epsilon", epsilon: true}
-			tail1.transitions1 = append(tail1.transitions1, epsilon)
+			epsilon := TransitionLinked{to: tail(s1), predicate: func(r rune) bool { return true }, description: "epsilon", epsilon: true}
+			tail1.transitions = append(tail1.transitions, epsilon)
 			s.push(s1)
 		}
 		symbols = symbols[1:]
@@ -144,12 +144,12 @@ func tail(s *StateLinked) *StateLinked {
 }
 
 func tails(s *StateLinked) []*StateLinked {
-	if s.empty || len(s.transitions1) == 0 {
+	if s.empty || len(s.transitions) == 0 {
 		return []*StateLinked{s}
 	}
 
 	var l []*StateLinked
-	for _, t := range s.transitions1 {
+	for _, t := range s.transitions {
 		l = append(l, tails(t.to)...)
 	}
 
@@ -159,28 +159,28 @@ func tails(s *StateLinked) []*StateLinked {
 func tailN(s *StateLinked, lag int) *StateLinked {
 	head := s
 	behind := s
-	for len(head.transitions1) > 0 && !head.transitions1[0].to.empty {
-		head = head.transitions1[0].to
+	for len(head.transitions) > 0 && !head.transitions[0].to.empty {
+		head = head.transitions[0].to
 		if lag > 0 {
 			lag--
 		} else {
-			behind = behind.transitions1[0].to
+			behind = behind.transitions[0].to
 		}
 	}
 	return behind
 }
 
 func (s *stackCompiler) append(s1 *StateLinked, s2 *StateLinked, predicate Predicate, description string) {
-	t := transitionLinked{
+	t := TransitionLinked{
 		to:          s2,
 		predicate:   predicate,
 		description: description,
 	}
 
-	if len(s1.transitions1) > 0 && s1.transitions1[0].to.empty {
-		s1.transitions1[0] = t
+	if len(s1.transitions) > 0 && s1.transitions[0].to.empty {
+		s1.transitions[0] = t
 	} else {
-		s1.transitions1 = append(s1.transitions1, t)
+		s1.transitions = append(s1.transitions, t)
 	}
 }
 

@@ -63,7 +63,7 @@ func (r *runner) stepEpsilons() (hasEpsilonAdvanced bool) {
 	nextBranches := newBranchSet()
 	for br := range r.branches.set {
 		// if a branch contains an epsilon transition
-		for _, t := range br.transitions1 {
+		for _, t := range br.transitions {
 			if t.epsilon && !r.branches.contains(t.to) {
 				// add it to a branch
 				nextBranches.add(t.to)
