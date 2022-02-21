@@ -25,7 +25,7 @@ type Result struct {
 	Count       int
 	Query       string
 	Finished    bool
-	Result      Match
+	Match       Match
 }
 
 func NewSearch(filePath string) *search {
@@ -120,12 +120,10 @@ func (s *search) SearchRegex(ctx context.Context, regex string, out chan Result)
 
 	count := 0
 	for result := range resultChan {
-		//start := s.sampleStart(result)
-		//end := s.sampleEnd(result)
 		out <- Result{
 			LineNumber:  result.Line,
 			LineContent: s.lines[result.Line-1],
-			Result:      Match{Start: result.Start, End: result.End},
+			Match:       Match{Start: result.Start, End: result.End},
 			Count:       count,
 			Query:       regex,
 			Finished:    false,

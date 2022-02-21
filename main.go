@@ -59,8 +59,9 @@ func list(ctx context.Context, input chan string, sc Screen) {
 	sc.SetState(state)
 
 	results := make(chan search.Result)
-	var queryResults []search.Result
+	var queryResults [][]search.Result
 	cancel, cancelFunc := context.WithCancel(ctx)
+	previousLine := -1 // start at negative as there is no previous line at first
 	offset := 0
 	for {
 		select {
@@ -82,7 +83,7 @@ func list(ctx context.Context, input chan string, sc Screen) {
 			default:
 				state = displayState{Target: t}
 				offset = 0
-				queryResults = []search.Result{}
+				queryResults = [][]search.Result{}
 				cancelFunc()
 				cancel, cancelFunc = context.WithCancel(ctx)
 				if len(t) >= 3 {
@@ -98,13 +99,19 @@ func list(ctx context.Context, input chan string, sc Screen) {
 			if r.Query != currentQuery {
 				continue
 			}
-			queryResults = append(queryResults, r)
+			if previousLine == r.LineNumber {
+				lastIndex := len(queryResults) - 1
+				queryResults[lastIndex] = append(queryResults[lastIndex], r)
+			} else {
+				queryResults = append(queryResults, []search.Result{r})
+			}
 			if r.Finished {
 				state.Done = true
 			} else {
 				state = getState(queryResults, state, offset)
 			}
 			sc.SetState(state)
+			previousLine = r.LineNumber
 		}
 	}
 }
@@ -125,7 +132,7 @@ func max(i, i2 int) int {
 	}
 }
 
-func getState(queryResults []search.Result, state displayState, offset int) displayState {
+func getState(queryResults [][]search.Result, state displayState, offset int) displayState {
 	if len(queryResults) > 10 {
 		state.Lines = formatLines(queryResults[offset:offset+10], offset)
 	} else {
@@ -135,24 +142,73 @@ func getState(queryResults []search.Result, state displayState, offset int) disp
 	return state
 }
 
-func formatLines(results []search.Result, offset int) []string {
-	res := make([]string, 0, len(results))
-	for i, r := range results {
-		res = append(res, fmt.Sprintf("%d: line-%s: \"%s\"", i+1+offset, strconv.Itoa(r.LineNumber), buildLine(r)))
+func formatLines(lineResults [][]search.Result, offset int) []string {
+	res := make([]string, 0, len(lineResults))
+	for i, r := range lineResults {
+		res = append(res, fmt.Sprintf("%d: line-%s: \"%s\"", i+1+offset, strconv.Itoa(r[0].LineNumber), buildLine(r[0].LineContent, matchesFromResults(r))))
 	}
 	return res
 }
 
-func buildLine(r search.Result) string {
-	beforeMatch := r.LineContent[:r.Result.Start]
-	match := r.LineContent[r.Result.Start : r.Result.End+1]
-	afterMatch := r.LineContent[r.Result.End+1:]
-	line := beforeMatch + RED_ANSI + match + RESET_ANSI + afterMatch
-	line = strings.ReplaceAll(line, "\n", " \\n ")
-	if len(line) > 300 {
-		line = line[:300] + RESET_ANSI
+func matchesFromResults(results []search.Result) (matches []search.Match) {
+	for _, r := range results {
+		matches = append(matches, r.Match)
 	}
-	return line
+	return matches
+}
+
+func buildLine(content string, matches []search.Match) string {
+	var reducedMatches = reduceMatches(matches)
+	var segments []string
+	last := 0
+	for _, m := range reducedMatches {
+		segments = append(segments, content[last:m.Start])
+		segments = append(segments, RED_ANSI)
+		segments = append(segments, content[m.Start:m.End+1])
+		segments = append(segments, RESET_ANSI)
+		last = m.End+1
+	}
+	segments = append(segments, content[last:])
+	line := strings.Join(segments, "")
+	line = strings.ReplaceAll(line, "\n", " \\n ")
+	line = strings.TrimSpace(line)
+	return line + RESET_ANSI
+}
+
+func reduceMatches(matches []search.Match) []search.Match {
+	var res []search.Match
+	for _, match := range matches {
+		i, isOverlapping := overlapAny(match, res)
+		if isOverlapping {
+			res[i] = merge(match, res[i])
+		} else {
+			res = append(res, match)
+		}
+	}
+	return res
+}
+
+func merge(a, b search.Match) search.Match {
+	return search.Match{
+		Start: min(a.Start, b.Start),
+		End:   max(a.End, b.End),
+	}
+}
+
+func overlapAny(a search.Match, b []search.Match) (i int, ok bool) {
+	for index, match := range b {
+		if overlap(a, match) {
+			return index, true
+		}
+	}
+	return 0, false
+}
+
+func overlap(a, b search.Match) bool {
+	// assumption: start is always less than end
+	bStartsAfterA := b.Start > a.End
+	aStartsAfterB := a.Start > b.End
+	return !(bStartsAfterA || aStartsAfterB)
 }
 
 func count(ctx context.Context, input chan string, sc Screen) {
