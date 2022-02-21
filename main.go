@@ -27,10 +27,11 @@ func main() {
 }
 
 type displayState struct {
-	Ready bool
-	Lines  []string
-	Done   bool
-	Target string
+	Ready        bool
+	Lines        []string
+	TotalResults int
+	Done         bool
+	Target       string
 }
 
 type Screen interface {
@@ -52,6 +53,7 @@ func list(ctx context.Context, input chan string, sc Screen) {
 {{ if not .Ready }}Enter 3 letters or more to search.
 {{ else }}{{ range $i, $line := .Lines }}
 {{ $line }}{{ end }}
+{{ if gt .TotalResults 10 }}{{ .TotalResults }} total results{{ end }}
 ... Searching{{ end }}`
 	sc.SetTemplate(templateString)
 	sc.SetState(state)
@@ -60,7 +62,6 @@ func list(ctx context.Context, input chan string, sc Screen) {
 	var queryResults []search.Result
 	cancel, cancelFunc := context.WithCancel(ctx)
 	offset := 0
-	resultCounter := 0
 	for {
 		select {
 		// return if outer context is cancelled
@@ -72,15 +73,14 @@ func list(ctx context.Context, input chan string, sc Screen) {
 			case "LEFT", "RIGHT":
 			case "DOWN":
 				offset = min(len(queryResults)-10, offset+1)
-				state = getState(queryResults, state, offset, resultCounter)
+				state = getState(queryResults, state, offset)
 				sc.SetState(state)
 			case "UP":
 				offset = max(0, offset-1)
-				state = getState(queryResults, state, offset, resultCounter)
+				state = getState(queryResults, state, offset)
 				sc.SetState(state)
 			default:
 				state = displayState{Target: t}
-				resultCounter = 0
 				offset = 0
 				queryResults = []search.Result{}
 				cancelFunc()
@@ -95,13 +95,14 @@ func list(ctx context.Context, input chan string, sc Screen) {
 				sc.SetState(state)
 			}
 		case r := <-results:
-			if r.Query != currentQuery { continue }
+			if r.Query != currentQuery {
+				continue
+			}
 			queryResults = append(queryResults, r)
-			resultCounter++
 			if r.Finished {
 				state.Done = true
 			} else {
-				state = getState(queryResults, state, offset, resultCounter)
+				state = getState(queryResults, state, offset)
 			}
 			sc.SetState(state)
 		}
@@ -124,16 +125,13 @@ func max(i, i2 int) int {
 	}
 }
 
-func getState(queryResults []search.Result, state displayState, offset int, resultCounter int) displayState {
+func getState(queryResults []search.Result, state displayState, offset int) displayState {
 	if len(queryResults) > 10 {
 		state.Lines = formatLines(queryResults[offset:offset+10], offset)
-		if len(state.Lines) < 11 {
-			state.Lines = append(state.Lines, "1 more element not shown")
-		}
-		state.Lines[10] = fmt.Sprintf("%d total results.", resultCounter)
 	} else {
 		state.Lines = formatLines(queryResults, 0)
 	}
+	state.TotalResults = len(queryResults)
 	return state
 }
 
