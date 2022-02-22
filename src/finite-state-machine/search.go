@@ -25,11 +25,14 @@ func FindAllAsync(ctx context.Context, finiteStateMachine Machine, searchString 
 			return
 		default:
 			char := runes[end]
-			if !hasRerunFail && char == '\n' {
+			if char == '\n' {
 				// Like grep, don't search for matches across lines.
 				finiteStateMachine.Reset()
 				lineCounter++
-				lineStart = end + 1
+				end++
+				lineStart = end
+				start = end
+				continue
 			}
 			currentState := finiteStateMachine.Next(char)
 			switch currentState {
@@ -60,6 +63,25 @@ func FindAllAsync(ctx context.Context, finiteStateMachine Machine, searchString 
 
 type localResult struct {
 	start, end int
+}
+
+type localResultWithLines struct {
+	line, start, end int
+}
+
+
+func FindAllWithLines(finiteStateMachine Machine, searchString string) []localResultWithLines {
+	var results []localResultWithLines
+	resultChan := make(chan Result, 10)
+	FindAllAsync(context.TODO(), finiteStateMachine, searchString, resultChan)
+	for res := range resultChan {
+		results = append(results, localResultWithLines{
+			start: res.Start,
+			end:   res.End,
+			line: res.Line,
+		})
+	}
+	return results
 }
 
 func FindAll(finiteStateMachine Machine, searchString string) []localResult {

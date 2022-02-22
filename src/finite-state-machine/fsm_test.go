@@ -10,10 +10,21 @@ type fsmTest struct {
 	expectedResults []localResult
 }
 
+type fsmTestWithLines struct {
+	s               string
+	expectedResults []localResultWithLines
+}
+
 type compiledTest struct {
 	regex           string
 	input           string
 	expectedResults []localResult
+}
+
+type compiledTestWithLines struct {
+	regex           string
+	input           string
+	expectedResults []localResultWithLines
 }
 
 func BenchmarkLinkedFSM(b *testing.B) {
@@ -42,6 +53,24 @@ func TestCharacterwithwildcardmodifier(t *testing.T) {
 		testCompiledMachine(t, tt.regex, fsmTest{s: tt.input, expectedResults: tt.expectedResults})
 	}
 }
+
+func TestSimpleConcatenations(t *testing.T) {
+	for _, tt := range []compiledTestWithLines{
+		{regex: "cat", input: "acca\nacxxxsabc\naccatura", expectedResults: []localResultWithLines{{
+			line:  3,
+			start: 2,
+			end:   4,
+		}}},
+		{regex: "cat", input: "ca\nxxx\ncat", expectedResults: []localResultWithLines{{
+			line:  3,
+			start: 0,
+			end:   2,
+		}}},
+	} {
+		testCompiledMachineWithLines(t, tt.regex, fsmTestWithLines{s: tt.input, expectedResults: tt.expectedResults})
+	}
+}
+
 func TestDeeplyNestedCatenation(t *testing.T) {
 	for _, tt := range []compiledTest{
 		{regex: "(((ab)(c)d)|(fg))", input: "abcd", expectedResults: []localResult{{0, 3}}},
@@ -313,6 +342,15 @@ func testCompiledMachine(t *testing.T, regex string, tt fsmTest) bool {
 	})
 }
 
+func testCompiledMachineWithLines(t *testing.T, regex string, tt fsmTestWithLines) bool {
+	return t.Run(fmt.Sprintf("FindAll for compiled('%s') in string '%s'", regex, tt.s), func(t *testing.T) {
+		compiledMachine := Compile(regex)
+		runner := NewRunner(compiledMachine)
+		runner.Reset()
+		testFindAllWithLines(t, tt.s, runner, tt.expectedResults)
+	})
+}
+
 func testMachine(t *testing.T, desc string, tt fsmTest, m *StateLinked) bool {
 	return t.Run(fmt.Sprintf("FindAll for '%s' in string '%s'", desc, tt.s), func(t *testing.T) {
 		runner := NewRunner(m)
@@ -323,6 +361,20 @@ func testMachine(t *testing.T, desc string, tt fsmTest, m *StateLinked) bool {
 
 func testFindAll(t *testing.T, s string, finiteStateMachine Machine, expectedResults []localResult) {
 	results := FindAll(finiteStateMachine, s)
+
+	if len(results) != len(expectedResults) {
+		t.Fatalf("wrong number of results for string '%s', expected %+v, got %+v", s, len(expectedResults), len(results))
+	}
+
+	for j := range results {
+		if results[j] != expectedResults[j] {
+			t.Fatalf("wrong Result for string '%s': expected %d, got %d", s, expectedResults[j], results[j])
+		}
+	}
+}
+
+func testFindAllWithLines(t *testing.T, s string, finiteStateMachine Machine, expectedResults []localResultWithLines) {
+	results := FindAllWithLines(finiteStateMachine, s)
 
 	if len(results) != len(expectedResults) {
 		t.Fatalf("wrong number of results for string '%s', expected %+v, got %+v", s, len(expectedResults), len(results))
