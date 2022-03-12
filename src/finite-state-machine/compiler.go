@@ -73,60 +73,52 @@ func (s *stackCompiler) compile(symbols []symbol) *State {
 			s.stack.push(s1)
 		// concatenation
 		case Character:
-			s1 := s.stack.pop()
+			s1 := s.stack.peek()
 			s1Tail := tail(s1)
 			next := &State{}
 			s.append(s1Tail, next, func(r rune) bool { return r == symbol.letter }, getDescription(symbol))
-			s.stack.push(s1)
 
 			s.tailStack.pop()
 			s.tailStack.push(s1Tail)
 		case AnyCharacter: // '.'
-			s1 := s.stack.pop()
+			s1 := s.stack.peek()
 			s1Tail := tail(s1)
 			next := &State{}
 			s.append(s1Tail, next, func(r rune) bool { return true }, "to -> .")
-			s.stack.push(s1)
 
 			s.tailStack.pop()
 			s.tailStack.push(s1Tail)
 		case ZeroOrMore: // '*'
-			tail0 := s.tailStack.pop()
-			s.tailStack.push(tail0)
+			tail0 := s.tailStack.peek()
 
 			// (1) -x-> (2)
 			// becomes:
 			// (1) -x-> (2)
 			//   --ep1->
 			//   <--ep2-
-			s1 := s.stack.pop()
+			s1 := s.stack.peek()
 			s2 := tail(s1)
 			tail0.transitions = append(tail0.transitions, epsilonTo(s2))
 			s2.transitions = append(s2.transitions, epsilonTo(tail0))
 			s2.transitions = append([]Transition{epsilonTo(&State{})}, s2.transitions...) // epsilon3 (to end state) should be first for tail searches
-			s.stack.push(s1)
 		case OneOrMore: // '+'
 			// (1) -a-> (2)				-- from a simple starting state
 			// (1) -a-> (2) <-a- 		-- to a simple concatenation but with a recursive self definition
-			s1 := s.stack.pop()
+			s1 := s.stack.peek()
 			// grab the transition leading to the tail state. That is, grab the first transition from tail - 1.
 			leadingTransition := tailN(s1, 1).transitions[0]
 			// copy that transition to a secondary branch on the tail
 			tail(s1).transitions = append([]Transition{{to: &State{empty: true}}}, leadingTransition)
-			s.stack.push(s1)
 		case ZeroOrOne: // '?'
 			// (1) -a-> (2)				-- from a simple starting state
 			// becomes
 			// (1) -a-> (2)
 			//     -E->	(2)				-- add an epsilon transition to end state
-			s1 := s.stack.pop()
-			tail0 := s.tailStack.pop()
+			s1 := s.stack.peek()
+			tail0 := s.tailStack.peek()
 			s1Tail := tail(s1)
 
 			tail0.transitions = append([]Transition{epsilonTo(s1Tail)}, tail0.transitions...)
-
-			s.tailStack.push(tail0)
-			s.stack.push(s1)
 		}
 		symbols = symbols[1:]
 	}
