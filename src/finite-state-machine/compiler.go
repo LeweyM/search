@@ -12,29 +12,19 @@ func Compile(input string) *State {
 }
 
 type stackCompiler struct {
-	stack     []*State
+	stack StateStack
 	// tailStack keeps track of the tail - 1 of the current machine
 	tailStack StateStack
 }
 
-func (s *stackCompiler) pop() *State {
-	i := len(s.stack) - 1
-	state := s.stack[i]
-	s.stack = s.stack[:i]
-	return state
-}
-
-func (s *stackCompiler) push(linked *State) {
-	s.stack = append(s.stack, linked)
-}
-
 func (s *stackCompiler) compile(symbols []symbol) *State {
 	s.tailStack = StateStack{}
+	s.stack = StateStack{}
 	head := &State{
 		transitions: nil,
 	}
 	// starting state
-	s.push(head)
+	s.stack.push(head)
 	s.tailStack.push(head)
 
 	for len(symbols) > 0 {
@@ -42,7 +32,7 @@ func (s *stackCompiler) compile(symbols []symbol) *State {
 		switch symbol.symbolType {
 		case LParen:
 			newState := &State{}
-			s.push(newState)
+			s.stack.push(newState)
 			s.tailStack.push(newState)
 		case RParen:
 			s.tailStack.pop()
@@ -61,7 +51,7 @@ func (s *stackCompiler) compile(symbols []symbol) *State {
 			// (4) -x-> (5/1) -a-> (2) -b-> (3)  -- the end of 2nd branch is merged with beginning of 1st branch
 
 			// 1. join the ends of the inner branches with epsilons
-			inner := s.pop()
+			inner := s.stack.pop()
 			innerTails := tails(inner)
 			if len(innerTails) > 1 {
 				for _, innerTail := range innerTails[1:] {
@@ -71,32 +61,32 @@ func (s *stackCompiler) compile(symbols []symbol) *State {
 			}
 
 			// 2. merge the end of the outer branch to the beginning of the inner branch
-			outer := s.pop()
+			outer := s.stack.pop()
 			outerTail := tail(outer)
 			outerTail.merge(inner)
-			s.push(outer)
+			s.stack.push(outer)
 		// branch
 		case Pipe:
-			s1 := s.pop()
+			s1 := s.stack.pop()
 			// transition with empty 'to' will be start of new branch
 			s1.transitions = append([]Transition{{to: &State{empty: true}}}, s1.transitions...)
-			s.push(s1)
+			s.stack.push(s1)
 		// concatenation
 		case Character:
-			s1 := s.pop()
+			s1 := s.stack.pop()
 			s1Tail := tail(s1)
 			next := &State{}
 			s.append(s1Tail, next, func(r rune) bool { return r == symbol.letter }, getDescription(symbol))
-			s.push(s1)
+			s.stack.push(s1)
 
 			s.tailStack.pop()
 			s.tailStack.push(s1Tail)
 		case AnyCharacter: // '.'
-			s1 := s.pop()
+			s1 := s.stack.pop()
 			s1Tail := tail(s1)
 			next := &State{}
 			s.append(s1Tail, next, func(r rune) bool { return true }, "to -> .")
-			s.push(s1)
+			s.stack.push(s1)
 
 			s.tailStack.pop()
 			s.tailStack.push(s1Tail)
@@ -109,7 +99,7 @@ func (s *stackCompiler) compile(symbols []symbol) *State {
 			// (1) -x-> (2)
 			//   --ep1->
 			//   <--ep2-
-			s1 := s.pop()
+			s1 := s.stack.pop()
 			s2 := tail(s1)
 			epsilon1 := Transition{to: s2, predicate: func(r rune) bool { return true }, description: "epsilon", epsilon: true}
 			epsilon2 := Transition{to: tail0, predicate: func(r rune) bool { return true }, description: "epsilon", epsilon: true}
@@ -117,22 +107,22 @@ func (s *stackCompiler) compile(symbols []symbol) *State {
 			tail0.transitions = append(tail0.transitions, epsilon1)
 			s2.transitions = append(s2.transitions, epsilon2)
 			s2.transitions = append([]Transition{epsilon3}, s2.transitions...) // epsilon3 (to end state) should be first for tail searches
-			s.push(s1)
+			s.stack.push(s1)
 		case OneOrMore: // '+'
 			// (1) -a-> (2)				-- from a simple starting state
 			// (1) -a-> (2) <-a- 		-- to a simple concatenation but with a recursive self definition
-			s1 := s.pop()
+			s1 := s.stack.pop()
 			// grab the transition leading to the tail state. That is, grab the first transition from tail - 1.
 			leadingTransition := tailN(s1, 1).transitions[0]
 			// copy that transition to a secondary branch on the tail
 			tail(s1).transitions = append([]Transition{{to: &State{empty: true}}}, leadingTransition)
-			s.push(s1)
+			s.stack.push(s1)
 		case ZeroOrOne: // '?'
 			// (1) -a-> (2)				-- from a simple starting state
 			// becomes
 			// (1) -a-> (2)
 			//     -E->	(2)				-- add an epsilon transition to end state
-			s1 := s.pop()
+			s1 := s.stack.pop()
 			tail0 := s.tailStack.pop()
 			s1Tail := tail(s1)
 
@@ -140,7 +130,7 @@ func (s *stackCompiler) compile(symbols []symbol) *State {
 			tail0.transitions = append([]Transition{epsilon}, tail0.transitions...)
 
 			s.tailStack.push(tail0)
-			s.push(s1)
+			s.stack.push(s1)
 		}
 		symbols = symbols[1:]
 	}
