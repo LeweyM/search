@@ -43,7 +43,7 @@ func TestCharacterWithWildcardModifier(t *testing.T) {
 		{regex: "a*b", input: "aab", expectedResults: []localResult{{0, 2}}},
 		{regex: "a*b", input: "aaab", expectedResults: []localResult{{0, 3}}},
 		{regex: "a*b", input: "b", expectedResults: []localResult{{0, 0}}},
-		{regex: "a*b", input: "bb", expectedResults: []localResult{{0, 0}, {1,1}}},
+		{regex: "a*b", input: "bb", expectedResults: []localResult{{0, 0}, {1, 1}}},
 		{regex: "a*b", input: "a"},
 		{regex: "a*b", input: "aa"},
 
@@ -267,8 +267,8 @@ func TestManyRunnersLinked(t *testing.T) {
 
 	for _, tt := range []fsmTest{
 		{"aaaaa", []localResult{{0, 4}}},
-		{"aaaaaa", []localResult{{0,5}}},
-		{"aaaaaaa", []localResult{{0,6}}},
+		{"aaaaaa", []localResult{{0, 5}}},
+		{"aaaaaaa", []localResult{{0, 6}}},
 	} {
 		testCompiledMachine(t, regex, tt)
 	}
@@ -306,6 +306,7 @@ func TestLinkedWildcardMatcher(t *testing.T) {
 		{"ba", []localResult{}},
 		{"aaaabbbb", []localResult{{0, 7}}},
 		{"ababaccb", []localResult{{0, 7}}},
+		{"a1b3456", []localResult{{0, 2}}},
 	} {
 		testCompiledMachine(t, desc, tt)
 	}

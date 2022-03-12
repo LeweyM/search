@@ -42,7 +42,7 @@ type Screen interface {
 }
 
 func list(ctx context.Context, input chan string, sc Screen) {
-	se := search.NewSearch("./bible.txt")
+	se := search.NewSearch("./dict.txt")
 	se.LoadInMemory()
 	se.LoadLinesInMemory()
 

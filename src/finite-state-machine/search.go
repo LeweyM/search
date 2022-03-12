@@ -18,9 +18,9 @@ func FindAllAsync(ctx context.Context, finiteStateMachine Machine, searchString 
 	end := 0
 	lineStart := 0
 	runes := append([]rune(searchString)) // we add a 'NULL' 0 rune at the End so that even empty string inputs are processed.
-	//runes = append([]rune{0}, runes...)     // we add a 'NULL' 0 rune at the End so that even empty string inputs are processed.
 	hasRerunFail := false
 	hasStartedMatch := false
+	lastSuccessIndex := 0
 	for end < len(runes) {
 		select {
 		case <-ctx.Done():
@@ -30,7 +30,7 @@ func FindAllAsync(ctx context.Context, finiteStateMachine Machine, searchString 
 			if char == '\n' {
 				// if result found, return until end of line
 				if hasStartedMatch {
-					out <- Result{Start: start - lineStart, End: end - 1 - lineStart, Line: lineCounter}
+					out <- Result{Start: start - lineStart, End: lastSuccessIndex - lineStart, Line: lineCounter}
 					hasStartedMatch = false
 				}
 				// Like grep, don't search for matches across lines.
@@ -46,16 +46,13 @@ func FindAllAsync(ctx context.Context, finiteStateMachine Machine, searchString 
 			case Success:
 				if !hasStartedMatch {
 					hasStartedMatch = true
-					//start = end
 				}
-				//out <- Result{Start: start - lineStart, End: end - lineStart, Line: lineCounter}
-				//finiteStateMachine.Reset()
+				lastSuccessIndex = end
 				end++
-				//start = end
 				break
 			case Fail:
 				if hasStartedMatch {
-					out <- Result{Start: start - lineStart, End: end - 1 - lineStart, Line: lineCounter}
+					out <- Result{Start: start - lineStart, End: lastSuccessIndex - lineStart, Line: lineCounter}
 					hasStartedMatch = false
 				}
 				finiteStateMachine.Reset()
@@ -76,7 +73,7 @@ func FindAllAsync(ctx context.Context, finiteStateMachine Machine, searchString 
 	}
 
 	if hasStartedMatch {
-		out <- Result{Start: start - lineStart, End: end - 1 - lineStart, Line: lineCounter}
+		out <- Result{Start: start - lineStart, End: lastSuccessIndex - lineStart, Line: lineCounter}
 	}
 
 	if len([]rune(searchString)) == 0 {
