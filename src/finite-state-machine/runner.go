@@ -1,13 +1,13 @@
 package finite_state_machine
 
 type runner struct {
-	head      *StateLinked
-	failState *StateLinked
+	head      *State
+	failState *State
 	branches  *branchSet
 }
 
-func NewRunner(head *StateLinked) *runner {
-	failState := &StateLinked{id: 0}
+func NewRunner(head *State) *runner {
+	failState := &State{id: 0}
 
 	return &runner{
 		failState: failState,
@@ -62,14 +62,18 @@ func (r *runner) processEpsilons() {
 func (r *runner) stepEpsilons() (hasEpsilonAdvanced bool) {
 	nextBranches := newBranchSet()
 	for br := range r.branches.set {
-		// if a branch contains an epsilon transition
 		for _, t := range br.transitions {
-			if t.epsilon && !r.branches.contains(t.to) {
-				// add it to a branch
-				nextBranches.add(t.to)
-				hasEpsilonAdvanced = true
+			// if a branch contains an epsilon transition
+			if t.epsilon {
+				// and the destination has not yet been accounted for
+				if !r.branches.contains(t.to) {
+					// add its destination branches to the branch set
+					nextBranches.add(t.to)
+					hasEpsilonAdvanced = true
+				}
 			}
 		}
+		// then add the branch
 		nextBranches.add(br)
 	}
 	r.branches = nextBranches
@@ -79,8 +83,10 @@ func (r *runner) stepEpsilons() (hasEpsilonAdvanced bool) {
 func (r *runner) Reset() {
 	r.branches = newBranchSet()
 	r.branches.add(r.head)
+	// process epsilons at the starting state
+	r.processEpsilons()
 }
 
-func (r *runner) onFailState(b *StateLinked) bool {
+func (r *runner) onFailState(b *State) bool {
 	return b == r.failState
 }

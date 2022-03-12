@@ -19,7 +19,7 @@ type Transition struct {
 	epsilon     bool
 }
 
-func NewEpsilon(to *StateLinked) Transition {
+func NewEpsilon(to *State) Transition {
 	return Transition{
 		to:          to,
 		predicate:   func(input rune) bool { return true },
@@ -28,25 +28,25 @@ func NewEpsilon(to *StateLinked) Transition {
 	}
 }
 
-type StateLinked struct {
+type State struct {
 	empty        bool
 	id          int
 	transitions []Transition
 }
 
-type destination *StateLinked
+type destination *State
 
-func (s *StateLinked) matchingTransitions(input rune) []destination {
+func (s *State) matchingTransitions(input rune) []destination {
 	var matchingTransitions []destination
 	for _, t := range s.transitions {
-		if t.predicate != nil && t.predicate(input) {
+		if t.predicate != nil && t.predicate(input) && !t.epsilon { // TODO: clean up epsilon check here
 			matchingTransitions = append(matchingTransitions, t.to)
 		}
 	}
 	return matchingTransitions
 }
 
-func (s *StateLinked) isSuccessState() bool {
+func (s *State) isSuccessState() bool {
 	if len(s.transitions) == 0 {
 		return true
 	} else {
@@ -60,7 +60,7 @@ func (s *StateLinked) isSuccessState() bool {
 	}
 }
 
-func (s *StateLinked) merge(s2 *StateLinked) {
+func (s *State) merge(s2 *State) {
 	if s2.transitions[0].to.empty {
 		s2.transitions = s2.transitions[1:]
 	}

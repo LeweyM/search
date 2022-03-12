@@ -4,7 +4,7 @@ import "fmt"
 
 const DEBUG = true
 
-func Compile(input string) *StateLinked {
+func Compile(input string) *State {
 	symbols := lex(input)
 	compiler := stackCompiler{}
 	stateLinked := compiler.compile(symbols)
@@ -12,32 +12,46 @@ func Compile(input string) *StateLinked {
 }
 
 type stackCompiler struct {
-	stack []*StateLinked
+	stack     []*State
+	// tailStack keeps track of the tail - 1 of the current machine
+	tailStack StateStack
 }
 
-func (s *stackCompiler) pop() *StateLinked {
+func (s *stackCompiler) pop() *State {
 	i := len(s.stack) - 1
 	state := s.stack[i]
 	s.stack = s.stack[:i]
 	return state
 }
 
-func (s *stackCompiler) push(linked *StateLinked) {
+func (s *stackCompiler) push(linked *State) {
 	s.stack = append(s.stack, linked)
 }
 
-func (s *stackCompiler) compile(symbols []symbol) *StateLinked {
-	head := &StateLinked{
+func (s *stackCompiler) compile(symbols []symbol) *State {
+	s.tailStack = StateStack{}
+	head := &State{
 		transitions: nil,
 	}
-	s.push(head) // starting state
+	// starting state
+	s.push(head)
+	s.tailStack.push(head)
 
 	for len(symbols) > 0 {
 		symbol := symbols[0]
 		switch symbol.symbolType {
 		case LParen:
-			s.push(&StateLinked{})
+			newState := &State{}
+			s.push(newState)
+			s.tailStack.push(newState)
 		case RParen:
+			s.tailStack.pop()
+			t := s.tailStack.pop()
+			if t.transitions != nil {
+				s.tailStack.push(t.transitions[0].to)
+			} else {
+				s.tailStack.push(t)
+			}
 			// x(ab)
 			// inner (1) -a-> (2) -b-> (3)     -- main branch being processed inside the parens
 			// outer (4) -x-> (5)              -- outer branch which has been pushed to the stack
@@ -60,68 +74,72 @@ func (s *stackCompiler) compile(symbols []symbol) *StateLinked {
 			outer := s.pop()
 			outerTail := tail(outer)
 			outerTail.merge(inner)
-			// peek ahead
-			if len(symbols) > 1 && symbols[1].symbolType == ZeroOrMore {
-				// inner (1) -a-> (2) -b-> (3)     -- main branch being processed inside the parens
-				// outer (4) -x-> (5)              -- outer branch which has been pushed to the stack
-				//
-				// becomes
-				//
-				// (4) -x-> (5/1) -a-> (2) -b-> (3)  -- the end of 2nd branch is merged with beginning of 1st branch
-				//                ------------>      -- unconditional direct path to end state if 0 (ab)s
-				//								     -- ? should there be a recursive path back also? It will not be rung as it is greedy however...
-				outerTail.transitions = append(outerTail.transitions, Transition{to: tail(inner), predicate: func(input rune) bool { return true }, description: "to -> ."})
-				symbols = symbols[1:]
-			}
 			s.push(outer)
 		// branch
 		case Pipe:
 			s1 := s.pop()
 			// transition with empty 'to' will be start of new branch
-			s1.transitions = append([]Transition{{to: &StateLinked{empty: true}}}, s1.transitions...)
+			s1.transitions = append([]Transition{{to: &State{empty: true}}}, s1.transitions...)
 			s.push(s1)
 		// concatenation
 		case Character:
 			s1 := s.pop()
-			s2Tail := tail(s1)
-			next := &StateLinked{}
-			s.append(s2Tail, next, func(r rune) bool { return r == symbol.letter }, getDescription(symbol))
+			s1Tail := tail(s1)
+			next := &State{}
+			s.append(s1Tail, next, func(r rune) bool { return r == symbol.letter }, getDescription(symbol))
 			s.push(s1)
-		case AnyCharacter:
+
+			s.tailStack.pop()
+			s.tailStack.push(s1Tail)
+		case AnyCharacter: // '.'
 			s1 := s.pop()
-			s.append(tail(s1), &StateLinked{}, func(r rune) bool { return true }, "to -> .")
+			s1Tail := tail(s1)
+			next := &State{}
+			s.append(s1Tail, next, func(r rune) bool { return true }, "to -> .")
 			s.push(s1)
-		case ZeroOrMore:
-			// (1) -x-> (2) - we start with a simple starting state and a condition to transfer to state(2) on an 'x'
-			//
+
+			s.tailStack.pop()
+			s.tailStack.push(s1Tail)
+		case ZeroOrMore: // '*'
+			tail0 := s.tailStack.pop()
+			s.tailStack.push(tail0)
+
+			// (1) -x-> (2)
 			// becomes:
-			//
-			// (1) -> (2)   - the starting state now unconditionally goes to the next state, as there may be 0 'x's
-			//    <-x       - the old condition is used for the recursive loop, as there may be many 'x's
+			// (1) -x-> (2)
+			//   --ep1->
+			//   <--ep2-
 			s1 := s.pop()
-			// make a tail of s1 with a loop to itself
-			oneBeforeTail := tailN(s1, 1)
-			oneBeforeTail.transitions[0].to = oneBeforeTail
-			// make sure the main branch is nil
-			oneBeforeTail.transitions = append([]Transition{{to: &StateLinked{empty: true}}}, oneBeforeTail.transitions...)
+			s2 := tail(s1)
+			epsilon1 := Transition{to: s2, predicate: func(r rune) bool { return true }, description: "epsilon", epsilon: true}
+			epsilon2 := Transition{to: tail0, predicate: func(r rune) bool { return true }, description: "epsilon", epsilon: true}
+			epsilon3 := Transition{to: &State{}, predicate: func(r rune) bool { return true }, description: "epsilon", epsilon: true}
+			tail0.transitions = append(tail0.transitions, epsilon1)
+			s2.transitions = append(s2.transitions, epsilon2)
+			s2.transitions = append([]Transition{epsilon3}, s2.transitions...) // epsilon3 (to end state) should be first for tail searches
 			s.push(s1)
-		case OneOrMore:
+		case OneOrMore: // '+'
 			// (1) -a-> (2)				-- from a simple starting state
 			// (1) -a-> (2) <-a- 		-- to a simple concatenation but with a recursive self definition
 			s1 := s.pop()
 			// grab the transition leading to the tail state. That is, grab the first transition from tail - 1.
 			leadingTransition := tailN(s1, 1).transitions[0]
 			// copy that transition to a secondary branch on the tail
-			tail(s1).transitions = append([]Transition{{to: &StateLinked{empty: true}}}, leadingTransition)
+			tail(s1).transitions = append([]Transition{{to: &State{empty: true}}}, leadingTransition)
 			s.push(s1)
-		case ZeroOrOne:
+		case ZeroOrOne: // '?'
 			// (1) -a-> (2)				-- from a simple starting state
-			// (1) -E-> (2)
-			//     -a->					-- add an epsilon transition to state 2
+			// becomes
+			// (1) -a-> (2)
+			//     -E->	(2)				-- add an epsilon transition to end state
 			s1 := s.pop()
-			tail1 := tailN(s1, 1)
-			epsilon := Transition{to: tail(s1), predicate: func(r rune) bool { return true }, description: "epsilon", epsilon: true}
-			tail1.transitions = append(tail1.transitions, epsilon)
+			tail0 := s.tailStack.pop()
+			s1Tail := tail(s1)
+
+			epsilon := Transition{to: s1Tail, predicate: func(r rune) bool { return true }, description: "epsilon", epsilon: true}
+			tail0.transitions = append([]Transition{epsilon}, tail0.transitions...)
+
+			s.tailStack.push(tail0)
 			s.push(s1)
 		}
 		symbols = symbols[1:]
@@ -139,16 +157,16 @@ func getDescription(symbol symbol) string {
 	return desc
 }
 
-func tail(s *StateLinked) *StateLinked {
+func tail(s *State) *State {
 	return tailN(s, 0)
 }
 
-func tails(s *StateLinked) []*StateLinked {
+func tails(s *State) []*State {
 	if s.empty || len(s.transitions) == 0 {
-		return []*StateLinked{s}
+		return []*State{s}
 	}
 
-	var l []*StateLinked
+	var l []*State
 	for _, t := range s.transitions {
 		l = append(l, tails(t.to)...)
 	}
@@ -156,7 +174,7 @@ func tails(s *StateLinked) []*StateLinked {
 	return l
 }
 
-func tailN(s *StateLinked, lag int) *StateLinked {
+func tailN(s *State, lag int) *State {
 	head := s
 	behind := s
 	for len(head.transitions) > 0 && !head.transitions[0].to.empty {
@@ -170,7 +188,7 @@ func tailN(s *StateLinked, lag int) *StateLinked {
 	return behind
 }
 
-func (s *stackCompiler) append(s1 *StateLinked, s2 *StateLinked, predicate Predicate, description string) {
+func (s *stackCompiler) append(s1 *State, s2 *State, predicate Predicate, description string) {
 	t := Transition{
 		to:          s2,
 		predicate:   predicate,

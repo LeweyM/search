@@ -3,14 +3,14 @@ package finite_state_machine
 import "fmt"
 
 type builder struct {
-	states []*StateLinked
+	states []*State
 }
 
 var GlobalIdCounter = 0
 
-func NewStateLinkedBuilder() *builder {
-	var states []*StateLinked
-	states = append(states, &StateLinked{id: 0}) // stand in for fail state
+func NewStateBuilder() *builder {
+	var states []*State
+	states = append(states, &State{id: 0}) // stand in for fail state
 	return &builder{states: states}
 }
 
@@ -36,7 +36,7 @@ func (b *builder) AddWildTransition(from, to int) *builder {
 	return b
 }
 
-func (b *builder) AddMachineTransition(from int, state *StateLinked) *builder {
+func (b *builder) AddMachineTransition(from int, state *State) *builder {
 	b.fillEmptyStatesTo(from)
 	for _, t := range state.transitions {
 		// when composing a transition, we merge the first transitions of the new state into the transition of the from state
@@ -53,11 +53,11 @@ func (b *builder) fillEmptyStatesTo(from int) {
 	if from >= len(b.states) {
 		for i := len(b.states); i <= from; i++ {
 			GlobalIdCounter++
-			b.states = append(b.states, &StateLinked{id: GlobalIdCounter})
+			b.states = append(b.states, &State{id: GlobalIdCounter})
 		}
 	}
 }
 
-func (b *builder) Build() *StateLinked {
+func (b *builder) Build() *State {
 	return b.states[1]
 }
