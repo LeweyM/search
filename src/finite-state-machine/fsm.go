@@ -19,15 +19,6 @@ type Transition struct {
 	epsilon     bool
 }
 
-func NewEpsilon(to *State) Transition {
-	return Transition{
-		to:          to,
-		predicate:   func(input rune) bool { return true },
-		description: "epsilon",
-		epsilon:     true,
-	}
-}
-
 type State struct {
 	empty        bool
 	id          int

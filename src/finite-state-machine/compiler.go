@@ -56,7 +56,7 @@ func (s *stackCompiler) compile(symbols []symbol) *State {
 			if len(innerTails) > 1 {
 				for _, innerTail := range innerTails[1:] {
 					firstInnerTail := innerTails[0]
-					innerTail.transitions = append(innerTail.transitions, NewEpsilon(firstInnerTail))
+					innerTail.transitions = append(innerTail.transitions, epsilonTo(firstInnerTail))
 				}
 			}
 
@@ -101,12 +101,9 @@ func (s *stackCompiler) compile(symbols []symbol) *State {
 			//   <--ep2-
 			s1 := s.stack.pop()
 			s2 := tail(s1)
-			epsilon1 := Transition{to: s2, predicate: func(r rune) bool { return true }, description: "epsilon", epsilon: true}
-			epsilon2 := Transition{to: tail0, predicate: func(r rune) bool { return true }, description: "epsilon", epsilon: true}
-			epsilon3 := Transition{to: &State{}, predicate: func(r rune) bool { return true }, description: "epsilon", epsilon: true}
-			tail0.transitions = append(tail0.transitions, epsilon1)
-			s2.transitions = append(s2.transitions, epsilon2)
-			s2.transitions = append([]Transition{epsilon3}, s2.transitions...) // epsilon3 (to end state) should be first for tail searches
+			tail0.transitions = append(tail0.transitions, epsilonTo(s2))
+			s2.transitions = append(s2.transitions, epsilonTo(tail0))
+			s2.transitions = append([]Transition{epsilonTo(&State{})}, s2.transitions...) // epsilon3 (to end state) should be first for tail searches
 			s.stack.push(s1)
 		case OneOrMore: // '+'
 			// (1) -a-> (2)				-- from a simple starting state
@@ -126,8 +123,7 @@ func (s *stackCompiler) compile(symbols []symbol) *State {
 			tail0 := s.tailStack.pop()
 			s1Tail := tail(s1)
 
-			epsilon := Transition{to: s1Tail, predicate: func(r rune) bool { return true }, description: "epsilon", epsilon: true}
-			tail0.transitions = append([]Transition{epsilon}, tail0.transitions...)
+			tail0.transitions = append([]Transition{epsilonTo(s1Tail)}, tail0.transitions...)
 
 			s.tailStack.push(tail0)
 			s.stack.push(s1)
@@ -135,6 +131,10 @@ func (s *stackCompiler) compile(symbols []symbol) *State {
 		symbols = symbols[1:]
 	}
 	return head
+}
+
+func epsilonTo(to *State) Transition {
+	return Transition{to: to, predicate: func(r rune) bool { return true }, description: "epsilon", epsilon: true}
 }
 
 func getDescription(symbol symbol) string {
