@@ -1,9 +1,9 @@
 # TODO
 
 ## Regex
-- [ ] Find the longest search result
-- [ ] Find multiple results
-- [ ] Test check against grep
+- [x] Find the longest search result
+- [x] Find multiple results
+- [x] Test check against grep
 - [ ] Simplify NFA to DFA
 - [ ] character ranges e.g. [a-zA-Z]
 - [ ] special characters ^ and $
@@ -19,5 +19,5 @@
 - [x] Use templating language
 - [ ] smart overwriting instead of wiping whole screen
 - [x] color responses
-- [ ] scrollable results
+- [x] scrollable results
 - [ ] separate input from screen
