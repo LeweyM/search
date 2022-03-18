@@ -88,24 +88,6 @@ type localResult struct {
 	start, end int
 }
 
-type localResultWithLines struct {
-	line, start, end int
-}
-
-func FindAllWithLines(finiteStateMachine Machine, searchString string) []localResultWithLines {
-	var results []localResultWithLines
-	resultChan := make(chan Result, 100)
-	FindAllAsync(context.TODO(), finiteStateMachine, searchString, resultChan)
-	for res := range resultChan {
-		results = append(results, localResultWithLines{
-			start: res.Start,
-			end:   res.End,
-			line:  res.Line,
-		})
-	}
-	return results
-}
-
 func FindAll(finiteStateMachine Machine, searchString string) []localResult {
 	var results []localResult
 	resultChan := make(chan Result, 100)
@@ -114,6 +96,20 @@ func FindAll(finiteStateMachine Machine, searchString string) []localResult {
 		results = append(results, localResult{
 			start: res.Start,
 			end:   res.End,
+		})
+	}
+	return results
+}
+
+func FindAllWithLines(finiteStateMachine Machine, searchString string) []Result {
+	var results []Result
+	resultChan := make(chan Result, 1000)
+	FindAllAsync(context.TODO(), finiteStateMachine, searchString, resultChan)
+	for res := range resultChan {
+		results = append(results, Result{
+			Start: res.Start,
+			End:   res.End,
+			Line:  res.Line,
 		})
 	}
 	return results

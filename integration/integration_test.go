@@ -49,6 +49,52 @@ func TestIntegration(t *testing.T) {
 	}
 }
 
+func TestDirectorySearch(t *testing.T) {
+	path := "/data/bible-in-pages/"
+	regex := "god"
+
+	// get search results
+	newSearch := search.NewSearch(".." + path)
+	results := newSearch.SearchDirectoryRegex(regex)
+	resultsMap := make(map[string]string)
+	for _, result := range results {
+		if result.Finished {
+			break
+		}
+		key := result.File + "-" + strconv.Itoa(result.LineNumber)
+		_, has := resultsMap[key]
+		// only take the first result for a line
+		if !has {
+			resultsMap[key] = result.LineContent[result.Match.Start : result.Match.End+1]
+		}
+	}
+
+	// get grep results
+	sanitizedGrep := sanitize(regex)
+	grepResults := grep(sanitizedGrep, path)
+	grepResultsMap := make(map[string]string)
+	for _, res := range grepResults {
+		grepResultsMap[res.file+"-"+strconv.Itoa(res.line)] = res.content
+	}
+
+	// test
+	t.Run(fmt.Sprintf("test against grep with regex: '%s'", regex), func(t *testing.T) {
+		for k, v := range grepResultsMap {
+			content, hasLine := resultsMap[k]
+			if !hasLine {
+				t.Fatalf("Expected search to find %s with content %s", k, v)
+			}
+			if content != v {
+				t.Fatalf("Expected %s to have content '%s', but instead had '%s'", k, v, content)
+			}
+			delete(grepResultsMap, k)
+		}
+		if len(grepResultsMap) > 0 {
+			t.Fatalf("Search found additional results to grep: %v", grepResultsMap)
+		}
+	})
+}
+
 func getGrepResults(path string, regex string) map[int]string {
 	sanitizedGrep := sanitize(regex)
 	grepResults := grep(sanitizedGrep, path)
@@ -57,25 +103,6 @@ func getGrepResults(path string, regex string) map[int]string {
 		grepResultsMap[res.line] = res.content
 	}
 	return grepResultsMap
-}
-
-func sanitize(regex string) string {
-	var res string
-	escapableCharacters := map[rune]bool{
-		'(': true,
-		')': true,
-		'|': true,
-		'+': true,
-		'?': true,
-	}
-	for _, char := range regex {
-		if escapableCharacters[char] {
-			res += "\\" + string(char)
-		} else {
-			res += string(char)
-		}
-	}
-	return res
 }
 
 func getSearchResults(filePath string, regex string) map[int]string {
@@ -98,6 +125,25 @@ func getSearchResults(filePath string, regex string) map[int]string {
 		}
 	}
 	return searchResultsMap
+}
+
+func sanitize(regex string) string {
+	var res string
+	escapableCharacters := map[rune]bool{
+		'(': true,
+		')': true,
+		'|': true,
+		'+': true,
+		'?': true,
+	}
+	for _, char := range regex {
+		if escapableCharacters[char] {
+			res += "\\" + string(char)
+		} else {
+			res += string(char)
+		}
+	}
+	return res
 }
 
 func grep(regex, path string) []grepResult {

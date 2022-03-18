@@ -3,6 +3,8 @@ package search
 import (
 	"context"
 	"os"
+	"path/filepath"
+	"runtime"
 	finite_state_machine "search/src/finite-state-machine"
 	"strings"
 )
@@ -26,6 +28,11 @@ type Result struct {
 	Query       string
 	Finished    bool
 	Match       Match
+}
+
+type ResultWithFile struct {
+	Result
+	File string
 }
 
 func NewSearch(filePath string) *search {
@@ -59,62 +66,10 @@ func (s *search) LoadLinesInMemory() {
 	return
 }
 
-func (s *search) Count(ctx context.Context, target string, out chan int) {
-	count := 0
-	i := 0
-
-	for range s.content {
-		select {
-		case <-ctx.Done():
-			return
-		default:
-			if i+len(target) < len(s.content) && string(s.content[i:i+len(target)]) == target {
-				count++
-				out <- count
-			}
-			i++
-		}
-	}
-	out <- count
-}
-
-func (s *search) Search(ctx context.Context, target string, out chan Result) {
-	line := 0
-	i := 0
-	count := 0
-
-	for _, ch := range s.content {
-		select {
-		case <-ctx.Done():
-			return
-		default:
-			if ch == '\n' {
-				line++
-			}
-			if i+len(target) <= len(s.content) && string(s.content[i:i+len(target)]) == target {
-				//time.Sleep(time.Duration(rand.Intn(50)) * time.Millisecond) // for simulating slower search results
-				out <- Result{
-					Finished:    false,
-					Query:       target,
-					Count:       count,
-					LineNumber:  line + 1,
-					LineContent: s.lines[line],
-				}
-				count++
-			}
-			i++
-		}
-	}
-	out <- Result{
-		Finished: true,
-		Query:    target,
-	}
-}
-
 func (s *search) SearchRegex(ctx context.Context, regex string, out chan Result) {
 	state := finite_state_machine.Compile(regex)
 	runner := finite_state_machine.NewRunner(state)
-	resultChan := make(chan finite_state_machine.Result, 10)
+	resultChan := make(chan finite_state_machine.Result)
 
 	go finite_state_machine.FindAllAsync(ctx, runner, string(s.content), resultChan)
 
@@ -133,6 +88,70 @@ func (s *search) SearchRegex(ctx context.Context, regex string, out chan Result)
 
 	out <- Result{
 		Finished: true,
+	}
+}
+
+func (s *search) SearchDirectoryRegex(regex string) []ResultWithFile {
+	fileChan := make(chan string)
+	resultChan := make(chan ResultWithFile, 1000) //TODO: support more results
+	defer close(fileChan)
+
+	state := finite_state_machine.Compile(regex)
+
+	// start workers
+	for i := 0; i < runtime.NumCPU(); i++ {
+		go s.worker(state, fileChan, resultChan)
+	}
+
+	// read directory
+	dir, err := os.ReadDir(s.filePath)
+	if err != nil {
+		panic(err)
+	}
+
+	// load directories into workers
+	for _, entry := range dir {
+		if !entry.IsDir() {
+			fileChan <- entry.Name()
+		}
+	}
+	close(resultChan) //TODO: If files not finished loading this can lead to send on closed channel
+
+	// compile results
+	var res []ResultWithFile
+	for result := range resultChan {
+		result.Query = regex
+		res = append(res, result)
+	}
+
+	return res
+}
+
+func (s *search) worker(fsm *finite_state_machine.State, in chan string, out chan ResultWithFile) {
+	for fileName := range in {
+		path := filepath.Join(s.filePath, fileName)
+
+		file, err := os.ReadFile(path)
+		if err != nil {
+			panic("cannot read file")
+		}
+
+		var results []finite_state_machine.Result
+		runner := finite_state_machine.NewRunner(fsm)
+		results = finite_state_machine.FindAllWithLines(runner, string(file))
+
+		lines := strings.Split(string(file), "\n")
+		for _, result := range results {
+			out <- ResultWithFile{
+				Result: Result{
+					LineNumber:  result.Line,
+					LineContent: lines[result.Line-1],
+					Match:       Match{Start: result.Start, End: result.End},
+					Finished:    false,
+				},
+				File: fileName,
+			}
+		}
 	}
 }
 

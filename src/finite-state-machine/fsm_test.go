@@ -12,7 +12,7 @@ type fsmTest struct {
 
 type fsmTestWithLines struct {
 	s               string
-	expectedResults []localResultWithLines
+	expectedResults []Result
 }
 
 type compiledTest struct {
@@ -24,7 +24,7 @@ type compiledTest struct {
 type compiledTestWithLines struct {
 	regex           string
 	input           string
-	expectedResults []localResultWithLines
+	expectedResults []Result
 }
 
 func BenchmarkLinkedFSM(b *testing.B) {
@@ -57,20 +57,20 @@ func TestCharacterWithWildcardModifier(t *testing.T) {
 
 func TestMultiLines(t *testing.T) {
 	for _, tt := range []compiledTestWithLines{
-		{regex: "(dis)?like", input: "adultlike\nadultness", expectedResults: []localResultWithLines{{
-			line:  1,
-			start: 5,
-			end:   8,
+		{regex: "(dis)?like", input: "adultlike\nadultness", expectedResults: []Result{{
+			Line:  1,
+			Start: 5,
+			End:   8,
 		}}},
-		{regex: "cat", input: "acca\nacxxxsabc\naccatura", expectedResults: []localResultWithLines{{
-			line:  3,
-			start: 2,
-			end:   4,
+		{regex: "cat", input: "acca\nacxxxsabc\naccatura", expectedResults: []Result{{
+			Line:  3,
+			Start: 2,
+			End:   4,
 		}}},
-		{regex: "cat", input: "ca\nxxx\ncat", expectedResults: []localResultWithLines{{
-			line:  3,
-			start: 0,
-			end:   2,
+		{regex: "cat", input: "ca\nxxx\ncat", expectedResults: []Result{{
+			Line:  3,
+			Start: 0,
+			End:   2,
 		}}},
 	} {
 		testCompiledMachineWithLines(t, tt.regex, fsmTestWithLines{s: tt.input, expectedResults: tt.expectedResults})
@@ -384,7 +384,7 @@ func testFindAll(t *testing.T, s string, finiteStateMachine Machine, expectedRes
 	}
 }
 
-func testFindAllWithLines(t *testing.T, s string, finiteStateMachine Machine, expectedResults []localResultWithLines) {
+func testFindAllWithLines(t *testing.T, s string, finiteStateMachine Machine, expectedResults []Result) {
 	results := FindAllWithLines(finiteStateMachine, s)
 
 	if len(results) != len(expectedResults) {

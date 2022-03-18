@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"io"
 	"os"
-	screen "search/src/screen"
+	"search/src/screen"
 	"search/src/search"
 	"strconv"
 	"strings"
@@ -23,7 +23,6 @@ func main() {
 	sc.Run(ctx, io, func() { os.Exit(1) })
 
 	list(ctx, input, sc)
-	//count(ctx, input, sc)
 }
 
 type displayState struct {
@@ -42,7 +41,7 @@ type Screen interface {
 }
 
 func list(ctx context.Context, input chan string, sc Screen) {
-	se := search.NewSearch("./dict.txt")
+	se := search.NewSearch("./bible.txt")
 	se.LoadInMemory()
 	se.LoadLinesInMemory()
 
@@ -54,7 +53,7 @@ func list(ctx context.Context, input chan string, sc Screen) {
 {{ else }}{{ range $i, $line := .Lines }}
 {{ $line }}{{ end }}
 {{ if gt .TotalResults 10 }}{{ .TotalResults }} total results{{ end }}
-... Searching{{ end }}`
+{{ if not .Done }}... Searching{{ end }}{{ end }}`
 	sc.SetTemplate(templateString)
 	sc.SetState(state)
 
@@ -166,7 +165,7 @@ func buildLine(content string, matches []search.Match) string {
 		segments = append(segments, RED_ANSI)
 		segments = append(segments, content[m.Start:m.End+1])
 		segments = append(segments, RESET_ANSI)
-		last = m.End+1
+		last = m.End + 1
 	}
 	segments = append(segments, content[last:])
 	line := strings.Join(segments, "")
@@ -209,41 +208,4 @@ func overlap(a, b search.Match) bool {
 	bStartsAfterA := b.Start > a.End
 	aStartsAfterB := a.Start > b.End
 	return !(bStartsAfterA || aStartsAfterB)
-}
-
-func count(ctx context.Context, input chan string, sc Screen) {
-	se := search.NewSearch("./dict.txt")
-	se.LoadInMemory()
-
-	results := make(chan int, 0)
-	waiting := make(chan bool, 0)
-
-	// run new search on each valid input
-	go func() {
-		cancel, cancelFunc := context.WithCancel(ctx)
-		for t := range input {
-			cancelFunc()
-			cancel, cancelFunc = context.WithCancel(ctx)
-			if len(t) >= 3 {
-				go se.Count(cancel, t, results)
-			} else {
-				waiting <- true
-			}
-		}
-		defer cancelFunc()
-	}()
-
-	// update count on each result
-	go func() {
-		for r := range results {
-			sc.SetLines([]string{"count: " + strconv.Itoa(r)})
-		}
-	}()
-
-	// set to waiting
-	go func() {
-		for range waiting {
-			sc.SetLines([]string{"Search for 3 more letters"})
-		}
-	}()
 }
