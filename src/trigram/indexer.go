@@ -19,20 +19,6 @@ func newIndexer() *Indexer {
 	}
 }
 
-func (i *Indexer) readDirectory(dirPath string) {
-	dir, err := os.ReadDir(dirPath)
-	if err != nil {
-		panic(err)
-	}
-
-	for _, entry := range dir {
-		if !entry.IsDir() {
-			path := filepath.Join(dirPath, entry.Name())
-			i.fileMap = append(i.fileMap, path)
-		}
-	}
-}
-
 func Index(dirPath string) *Indexer {
 	indexer := newIndexer()
 	indexer.readDirectory(dirPath)
@@ -74,6 +60,20 @@ func (i *Indexer) Lookup(q *query) []string {
 		files = append(files, i.fileMap[fileIndex])
 	}
 	return files
+}
+
+func (i *Indexer) readDirectory(dirPath string) {
+	dir, err := os.ReadDir(dirPath)
+	if err != nil {
+		panic(err)
+	}
+
+	for _, entry := range dir {
+		if !entry.IsDir() {
+			path := filepath.Join(dirPath, entry.Name())
+			i.fileMap = append(i.fileMap, path)
+		}
+	}
 }
 
 // intersectPair assumes that a b are both sorted and that there are no duplicates

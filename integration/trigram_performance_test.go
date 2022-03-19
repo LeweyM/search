@@ -1,6 +1,7 @@
 package integration
 
 import (
+	context2 "context"
 	"fmt"
 	"os"
 	"search/src/search"
@@ -70,7 +71,7 @@ func compareIndexedAndNotIndexedPerformance(b *testing.B, t test) {
 	b.Logf("Searching in %d files.", len(dir))
 	b.Run(fmt.Sprintf("test with regex: Without Index: '%s'", t.regex), func(b *testing.B) {
 		for i := 0; i < b.N; i++ {
-			search.NewSearch(".." + t.path).SearchDirectoryRegex(t.regex)
+			search.NewSearch(".."+t.path).SearchDirectoryRegex(context2.TODO(), t.regex)
 		}
 	})
 }

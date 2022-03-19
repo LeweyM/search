@@ -43,7 +43,7 @@ func getDirectoryGrepResults(regex string, path string) map[string]string {
 
 func getDirectorySearchResults(path string, regex string) map[string]string {
 	newSearch := search.NewSearch(".." + path)
-	results := newSearch.SearchDirectoryRegex(regex)
+	results := newSearch.SearchDirectoryRegex(context.TODO(), regex)
 	resultsMap := make(map[string]string)
 	for _, result := range results {
 		if result.Finished {

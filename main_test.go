@@ -22,5 +22,5 @@ func testWithInput(inputString string) {
 		cancelFunc()
 	}
 	sc.Run(ctx, strings.NewReader(inputString+"Q"), exit)
-	list(ctx, input, sc)
+	list(ctx, input, sc, "./data/bible/bible.txt")
 }

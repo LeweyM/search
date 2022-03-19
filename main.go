@@ -7,6 +7,7 @@ import (
 	"os"
 	"search/src/screen"
 	"search/src/search"
+	"search/src/trigram"
 	"strconv"
 	"strings"
 )
@@ -22,7 +23,8 @@ func main() {
 
 	sc.Run(ctx, io, func() { os.Exit(1) })
 
-	list(ctx, input, sc)
+	//list(ctx, input, sc, "./data/bible/bible.txt")
+	listDir(ctx, input, sc, "./data/bible-in-pages/")
 }
 
 type displayState struct {
@@ -31,6 +33,7 @@ type displayState struct {
 	TotalResults int
 	Done         bool
 	Target       string
+	Candidates   int
 }
 
 type Screen interface {
@@ -40,8 +43,91 @@ type Screen interface {
 	SetTemplate(templateString string)
 }
 
-func list(ctx context.Context, input chan string, sc Screen) {
-	se := search.NewSearch("./bible.txt")
+func listDir(ctx context.Context, input chan string, sc Screen, path string) {
+	se := search.NewSearch(path)
+	index := trigram.Index(path)
+
+	currentQuery := ""
+
+	state := displayState{}
+	templateString := `Input: {{ .Target }}
+{{ if not .Ready }}Enter 3 letters or more to search.{{ else }}
+Candidate Files: {{ .Candidates }}
+{{ range $i, $line := .Lines }}
+{{ $line }}{{ end }}
+{{ if gt .TotalResults 10 }}{{ .TotalResults }} total results{{ end }}
+{{ if not .Done }}... Searching{{ end }}{{ end }}`
+	sc.SetTemplate(templateString)
+	sc.SetState(state)
+
+	results := make(chan search.ResultWithFile)
+	var queryResults [][]search.ResultWithFile
+	cancel, cancelFunc := context.WithCancel(ctx)
+	previousLine := -1 // start at negative as there is no previous line at first
+	offset := 0
+	for {
+		select {
+		// return if outer context is cancelled
+		case <-ctx.Done():
+			cancelFunc()
+			return
+		case t := <-input:
+			switch t {
+			case "LEFT", "RIGHT":
+			case "DOWN":
+				offset = min(len(queryResults)-10, offset+1)
+				state = getStateNEW(queryResults, state, offset)
+				sc.SetState(state)
+			case "UP":
+				offset = max(0, offset-1)
+				state = getStateNEW(queryResults, state, offset)
+				sc.SetState(state)
+			default:
+				state = displayState{Target: t}
+				offset = 0
+				previousLine = -1
+				queryResults = [][]search.ResultWithFile{}
+				cancelFunc()
+				cancel, cancelFunc = context.WithCancel(ctx)
+				if len(t) >= 3 {
+					state.Ready = true
+					currentQuery = t
+					candidates := index.Lookup(trigram.Query(t))
+					state = updateCandidatesState(state, len(candidates))
+					go se.SearchDirectoryRegexAsync(cancel, t, candidates, results)
+				} else {
+					state.Ready = false
+				}
+				sc.SetState(state)
+			}
+		case r := <-results:
+			if r.Query != currentQuery {
+				continue
+			}
+			if previousLine == r.LineNumber {
+				lastIndex := len(queryResults) - 1
+				queryResults[lastIndex] = append(queryResults[lastIndex], r)
+			} else {
+				queryResults = append(queryResults, []search.ResultWithFile{r})
+			}
+			if r.Finished {
+				state.Done = true
+			} else {
+				state = getStateNEW(queryResults, state, offset)
+			}
+			sc.SetState(state)
+			previousLine = r.LineNumber
+		}
+	}
+}
+
+func updateCandidatesState(state displayState, candidates int) displayState {
+	state.Candidates = candidates
+	return state
+}
+
+func list(ctx context.Context, input chan string, sc Screen, path string) {
+	se := search.NewSearch(path)
 	se.LoadInMemory()
 	se.LoadLinesInMemory()
 
@@ -129,6 +215,37 @@ func max(i, i2 int) int {
 	} else {
 		return i2
 	}
+}
+
+func getStateNEW(queryResults [][]search.ResultWithFile, state displayState, offset int) displayState {
+	if len(queryResults) > 10 {
+		state.Lines = formatLinesNEW(queryResults[offset:offset+10], offset)
+	} else {
+		state.Lines = formatLinesNEW(queryResults, 0)
+	}
+	state.TotalResults = len(queryResults)
+	return state
+}
+
+func formatLinesNEW(lineResults [][]search.ResultWithFile, offset int) []string {
+	res := make([]string, 0, len(lineResults))
+	for i, r := range lineResults {
+		res = append(res, fmt.Sprintf(
+			"%d: [file:%s] line-%s: \"%s\"",
+			i+1+offset,
+			r[0].File,
+			strconv.Itoa(r[0].LineNumber),
+			buildLine(r[0].LineContent, matchesFromResultsNEW(r)),
+		))
+	}
+	return res
+}
+
+func matchesFromResultsNEW(results []search.ResultWithFile) (matches []search.Match) {
+	for _, r := range results {
+		matches = append(matches, r.Match)
+	}
+	return matches
 }
 
 func getState(queryResults [][]search.Result, state displayState, offset int) displayState {

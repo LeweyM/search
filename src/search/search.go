@@ -90,8 +90,22 @@ func (s *search) SearchRegex(ctx context.Context, regex string, out chan Result)
 	}
 }
 
-func (s *search) SearchDirectoryRegex(regex string) []ResultWithFile {
-	ctx := context.Background()
+func (s *search) SearchDirectoryRegexAsync(ctx context.Context, regex string, files []string, out chan ResultWithFile) {
+	for _, file := range files {
+		select {
+		case <-ctx.Done():
+			return
+		default:
+			name := strings.Split(file, "/")[2]
+			fileResults := s.SearchFile(ctx, regex, name)
+			for _, result := range fileResults {
+				out <- result
+			}
+		}
+	}
+}
+
+func (s *search) SearchDirectoryRegex(ctx context.Context, regex string) []ResultWithFile {
 	// read directory
 	dir, err := os.ReadDir(s.filePath)
 	if err != nil {
