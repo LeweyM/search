@@ -34,28 +34,18 @@ func (i *Indexer) readDirectory(dirPath string) {
 }
 
 func Index(dirPath string) *Indexer {
-	// read directory
-	dir, err := os.ReadDir(dirPath)
-	if err != nil {
-		panic(err)
-	}
-
 	indexer := newIndexer()
+	indexer.readDirectory(dirPath)
 
 	fileIndex := 0
-	for _, entry := range dir {
-		if !entry.IsDir() {
-			path := filepath.Join(dirPath, entry.Name())
-
-			open, err := os.Open(path)
-			if err != nil {
-				panic("cannot read file")
-			}
-
-			indexer.fileMap = append(indexer.fileMap, path)
-			indexer.index(bufio.NewReader(open), fileIndex)
-			fileIndex++
+	for _, path := range indexer.fileMap {
+		open, err := os.Open(path)
+		if err != nil {
+			panic("cannot read file")
 		}
+
+		indexer.index(bufio.NewReader(open), fileIndex)
+		fileIndex++
 	}
 
 	return indexer
@@ -78,7 +68,9 @@ func (i *Indexer) Lookup(q *query) []string {
 		trigramResults = append(trigramResults, fileIndices)
 	}
 
-	for _, fileIndex := range intersect(trigramResults) {
+	intersection := intersect(trigramResults)
+
+	for _, fileIndex := range intersection {
 		files = append(files, i.fileMap[fileIndex])
 	}
 	return files
@@ -114,6 +106,7 @@ func intersectPair(A []int, B []int) (res []int) {
 	}
 }
 
+// intersect repeatedly applies intersectPair to all lists in the 2d array until we have the total intersection
 func intersect(list [][]int) (res []int) {
 	for _, item := range list {
 		if res == nil {
@@ -125,7 +118,7 @@ func intersect(list [][]int) (res []int) {
 	return res
 }
 
-func (t *Indexer) index(reader io.RuneReader, fileIndex int) {
+func (i *Indexer) index(reader io.RuneReader, fileIndex int) {
 	trigram, err := readThree(reader)
 	if err == io.EOF {
 		return
@@ -142,13 +135,13 @@ func (t *Indexer) index(reader io.RuneReader, fileIndex int) {
 			}
 		} else {
 			if c == '\n' {
-				t.index(reader, fileIndex)
+				i.index(reader, fileIndex)
 				return
 			}
 			trigram = trigram[1:3] + string(c)
 
-			if len(t.trigramToFiles[trigram]) == 0 || t.trigramToFiles[trigram][len(t.trigramToFiles[trigram])-1] != fileIndex {
-				t.trigramToFiles[trigram] = append(t.trigramToFiles[trigram], fileIndex)
+			if len(i.trigramToFiles[trigram]) == 0 || i.trigramToFiles[trigram][len(i.trigramToFiles[trigram])-1] != fileIndex {
+				i.trigramToFiles[trigram] = append(i.trigramToFiles[trigram], fileIndex)
 			}
 		}
 	}
@@ -168,12 +161,4 @@ func readThree(reader io.RuneReader) (string, error) {
 		res[i] = c
 	}
 	return string(res), nil
-}
-
-func hasIndexed() {
-
-}
-
-func lookup() {
-
 }

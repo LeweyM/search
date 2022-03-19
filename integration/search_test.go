@@ -2,7 +2,6 @@ package integration
 
 import (
 	"fmt"
-	"search/src/search"
 	"search/src/trigram"
 	"testing"
 )
@@ -68,56 +67,6 @@ func TestDirectorySearch(t *testing.T) {
 			}
 			if len(grepResultsMap) > 0 {
 				t.Fatalf("Search found additional results to grep: %v", grepResultsMap)
-			}
-		})
-	}
-}
-
-func BenchmarkTrigramIndexedDirectorySearch(b *testing.B) {
-	type test struct {
-		path, regex string
-	}
-
-	tests := []test{
-		// for a specific case like this, the trigram index can filter out almost all the files where we
-		// shouldn't search.
-
-		// 19,494,433 ns/op - with index
-		// vs
-		// 5,953,637,518 ns/op - without index
-		// == 305x speedup!
-		{path: "/data/bible-in-pages", regex: "Shobek"},
-
-		// for a common word such as this, the trigram index doesn't filter many files so the results are
-		// less dramatic.
-
-		// 2,595,302,207 ns/op - with index
-		// vs
-		// 6,172,375,438 ns/op - without index
-		// == 2x speedup
-		{path: "/data/bible-in-pages", regex: "god"},
-
-		// as this case is uses a regex search too small for trigram filtering, we would expect the results to be
-		// more or less the same
-
-		// 7,137,193,041 ns/op - with index
-		// vs
-		// 6,320,655,498 ns/op - without index
-		// == no speedup (actually a little slower)
-		{path: "/data/bible-in-pages", regex: "ab"},
-	}
-
-	for _, t := range tests {
-		b.Run(fmt.Sprintf("test with regex: With Index: '%s'", t.regex), func(b *testing.B) {
-			index := trigram.Index(".." + t.path)
-			for i := 0; i < b.N; i++ {
-				searchWithIndex(index, t)
-			}
-		})
-
-		b.Run(fmt.Sprintf("test with regex: Without Index: '%s'", t.regex), func(b *testing.B) {
-			for i := 0; i < b.N; i++ {
-				search.NewSearch(".." + t.path).SearchDirectoryRegex(t.regex)
 			}
 		})
 	}
