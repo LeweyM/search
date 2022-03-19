@@ -101,10 +101,10 @@ func FindAll(finiteStateMachine Machine, searchString string) []localResult {
 	return results
 }
 
-func FindAllWithLines(finiteStateMachine Machine, searchString string) []Result {
+func FindAllWithLines(ctx context.Context, finiteStateMachine Machine, searchString string) []Result {
 	var results []Result
 	resultChan := make(chan Result, 1000)
-	FindAllAsync(context.TODO(), finiteStateMachine, searchString, resultChan)
+	FindAllAsync(ctx, finiteStateMachine, searchString, resultChan)
 	for res := range resultChan {
 		results = append(results, Result{
 			Start: res.Start,

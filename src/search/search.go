@@ -4,7 +4,6 @@ import (
 	"context"
 	"os"
 	"path/filepath"
-	"runtime"
 	finite_state_machine "search/src/finite-state-machine"
 	"strings"
 )
@@ -92,67 +91,51 @@ func (s *search) SearchRegex(ctx context.Context, regex string, out chan Result)
 }
 
 func (s *search) SearchDirectoryRegex(regex string) []ResultWithFile {
-	fileChan := make(chan string)
-	resultChan := make(chan ResultWithFile, 1000) //TODO: support more results
-	defer close(fileChan)
-
-	state := finite_state_machine.Compile(regex)
-
-	// start workers
-	for i := 0; i < runtime.NumCPU(); i++ {
-		go s.worker(state, fileChan, resultChan)
-	}
-
+	ctx := context.Background()
 	// read directory
 	dir, err := os.ReadDir(s.filePath)
 	if err != nil {
 		panic(err)
 	}
 
-	// load directories into workers
+	var res []ResultWithFile
+
 	for _, entry := range dir {
 		if !entry.IsDir() {
-			fileChan <- entry.Name()
-		}
-	}
-	close(resultChan) //TODO: If files not finished loading this can lead to send on closed channel
+			ctx, cancelFunc := context.WithCancel(ctx)
 
-	// compile results
-	var res []ResultWithFile
-	for result := range resultChan {
-		result.Query = regex
-		res = append(res, result)
-	}
+			path := filepath.Join(s.filePath, entry.Name())
 
-	return res
-}
-
-func (s *search) worker(fsm *finite_state_machine.State, in chan string, out chan ResultWithFile) {
-	for fileName := range in {
-		path := filepath.Join(s.filePath, fileName)
-
-		file, err := os.ReadFile(path)
-		if err != nil {
-			panic("cannot read file")
-		}
-
-		var results []finite_state_machine.Result
-		runner := finite_state_machine.NewRunner(fsm)
-		results = finite_state_machine.FindAllWithLines(runner, string(file))
-
-		lines := strings.Split(string(file), "\n")
-		for _, result := range results {
-			out <- ResultWithFile{
-				Result: Result{
-					LineNumber:  result.Line,
-					LineContent: lines[result.Line-1],
-					Match:       Match{Start: result.Start, End: result.End},
-					Finished:    false,
-				},
-				File: fileName,
+			file, err := os.ReadFile(path)
+			if err != nil {
+				panic("cannot read file")
 			}
+
+			state := finite_state_machine.Compile(regex)
+			runner := finite_state_machine.NewRunner(state)
+
+			results := finite_state_machine.FindAllWithLines(ctx, runner, string(file))
+
+			count := 0
+			lines := strings.Split(string(file), "\n")
+			for _, result := range results {
+				res = append(res, ResultWithFile{
+					Result: Result{
+						LineNumber:  result.Line,
+						LineContent: lines[result.Line-1],
+						Match:       Match{Start: result.Start, End: result.End},
+						Count:       count,
+						Query:       regex,
+						Finished:    false,
+					},
+					File: entry.Name(),
+				})
+				count++
+			}
+			cancelFunc()
 		}
 	}
+	return res
 }
 
 func (s *search) sampleEnd(result finite_state_machine.Result) int {

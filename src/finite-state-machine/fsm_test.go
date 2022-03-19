@@ -1,6 +1,7 @@
 package finite_state_machine
 
 import (
+	context2 "context"
 	"fmt"
 	"testing"
 )
@@ -385,7 +386,7 @@ func testFindAll(t *testing.T, s string, finiteStateMachine Machine, expectedRes
 }
 
 func testFindAllWithLines(t *testing.T, s string, finiteStateMachine Machine, expectedResults []Result) {
-	results := FindAllWithLines(finiteStateMachine, s)
+	results := FindAllWithLines(context2.TODO(), finiteStateMachine, s)
 
 	if len(results) != len(expectedResults) {
 		t.Fatalf("wrong number of results for string '%s', expected %+v, got %+v", s, len(expectedResults), len(results))

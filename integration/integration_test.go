@@ -33,9 +33,9 @@ func TestIntegration(t *testing.T) {
 	}
 
 	for _, t2 := range tests {
-		grepResultsMap := getGrepResults(t2.grepPath, t2.regex)
-		searchResultsMap := getSearchResults(t2.searchPath, t2.regex)
 		t.Run(fmt.Sprintf("test against grep with regex: '%s'", t2.regex), func(t *testing.T) {
+			grepResultsMap := getGrepResults(t2.grepPath, t2.regex)
+			searchResultsMap := getSearchResults(t2.searchPath, t2.regex)
 			for k, v := range grepResultsMap {
 				content, hasLine := searchResultsMap[k]
 				if !hasLine {
@@ -50,10 +50,50 @@ func TestIntegration(t *testing.T) {
 }
 
 func TestDirectorySearch(t *testing.T) {
-	path := "/data/bible-in-pages/"
-	regex := "god"
+	type test struct {
+		path, regex string
+	}
 
-	// get search results
+	tests := []test{
+		{path: "/data/bible-in-pages", regex: "(G|g)od"},
+		{path: "/data/bible-in-pages", regex: "heaven.*hell"},
+		{path: "/data/bible-in-pages", regex: "gos?"},
+		{path: "/data/bible-in-pages", regex: "go+d"},
+		{path: "/data/bible-in-pages", regex: "(beast|burden)"},
+	}
+
+	for _, t2 := range tests {
+		t.Run(fmt.Sprintf("test against grep with regex: '%s'", t2.regex), func(t *testing.T) {
+			resultsMap := getDirectorySearchResults(t2.path, t2.regex)
+			grepResultsMap := getDirectoryGrepResults(t2.regex, t2.path)
+			for k, v := range grepResultsMap {
+				content, hasLine := resultsMap[k]
+				if !hasLine {
+					t.Fatalf("Expected search to find %s with content %s", k, v)
+				}
+				if content != v {
+					t.Fatalf("Expected %s to have content '%s', but instead had '%s'", k, v, content)
+				}
+				delete(grepResultsMap, k)
+			}
+			if len(grepResultsMap) > 0 {
+				t.Fatalf("Search found additional results to grep: %v", grepResultsMap)
+			}
+		})
+	}
+}
+
+func getDirectoryGrepResults(regex string, path string) map[string]string {
+	sanitizedGrep := sanitize(regex)
+	grepResults := grep(sanitizedGrep, path)
+	grepResultsMap := make(map[string]string)
+	for _, res := range grepResults {
+		grepResultsMap[res.file+"-"+strconv.Itoa(res.line)] = res.content
+	}
+	return grepResultsMap
+}
+
+func getDirectorySearchResults(path string, regex string) map[string]string {
 	newSearch := search.NewSearch(".." + path)
 	results := newSearch.SearchDirectoryRegex(regex)
 	resultsMap := make(map[string]string)
@@ -68,31 +108,7 @@ func TestDirectorySearch(t *testing.T) {
 			resultsMap[key] = result.LineContent[result.Match.Start : result.Match.End+1]
 		}
 	}
-
-	// get grep results
-	sanitizedGrep := sanitize(regex)
-	grepResults := grep(sanitizedGrep, path)
-	grepResultsMap := make(map[string]string)
-	for _, res := range grepResults {
-		grepResultsMap[res.file+"-"+strconv.Itoa(res.line)] = res.content
-	}
-
-	// test
-	t.Run(fmt.Sprintf("test against grep with regex: '%s'", regex), func(t *testing.T) {
-		for k, v := range grepResultsMap {
-			content, hasLine := resultsMap[k]
-			if !hasLine {
-				t.Fatalf("Expected search to find %s with content %s", k, v)
-			}
-			if content != v {
-				t.Fatalf("Expected %s to have content '%s', but instead had '%s'", k, v, content)
-			}
-			delete(grepResultsMap, k)
-		}
-		if len(grepResultsMap) > 0 {
-			t.Fatalf("Search found additional results to grep: %v", grepResultsMap)
-		}
-	})
+	return resultsMap
 }
 
 func getGrepResults(path string, regex string) map[int]string {
