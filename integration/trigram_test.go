@@ -11,7 +11,7 @@ func TestTrigramIndexer(t *testing.T) {
 	path := "../data/bible-in-pages"
 
 	index := trigram.Index(path)
-	files := index.Lookup("Sho")
+	files := index.Lookup(trigram.Query("Shobek"))
 	fileMap := stringsToMap(files)
 
 	grepResult := getDirectoryGrepResults("Shobek", "/data/bible-in-pages")
@@ -23,19 +23,11 @@ func TestTrigramIndexer(t *testing.T) {
 		if !hasFile {
 			t.Fatalf("Expected search to find [%s]", file)
 		}
-		delete(fileMap, k)
+		delete(fileMap, file)
 	}
 	if len(fileMap) > 0 {
 		t.Fatalf("Search found additional results to grep: %v", fileMap)
 	}
 
 	print(files)
-}
-
-func stringsToMap(files []string) map[string]struct{} {
-	res := make(map[string]struct{}, len(files))
-	for _, file := range files {
-		res[file] = struct{}{}
-	}
-	return res
 }

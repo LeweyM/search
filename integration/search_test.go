@@ -1,23 +1,11 @@
 package integration
 
 import (
-	"bytes"
-	"context"
 	"fmt"
-	"os/exec"
 	"search/src/search"
 	"search/src/trigram"
-	"strconv"
-	"strings"
 	"testing"
 )
-
-type grepResult struct {
-	file    string
-	line    int
-	content string
-	match   string
-}
 
 // Slow tests which compare search results to grep search results.
 func TestIntegration(t *testing.T) {
@@ -85,115 +73,52 @@ func TestDirectorySearch(t *testing.T) {
 	}
 }
 
-func getDirectoryGrepResults(regex string, path string) map[string]string {
-	sanitizedGrep := sanitize(regex)
-	grepResults := grep(sanitizedGrep, path)
-	grepResultsMap := make(map[string]string)
-	for _, res := range grepResults {
-		grepResultsMap[res.file+"-"+strconv.Itoa(res.line)] = res.content
-	}
-	return grepResultsMap
-}
-
-func getDirectorySearchResults(path string, regex string) map[string]string {
-	newSearch := search.NewSearch(".." + path)
-	results := newSearch.SearchDirectoryRegex(regex)
-	resultsMap := make(map[string]string)
-	for _, result := range results {
-		if result.Finished {
-			break
-		}
-		key := result.File + "-" + strconv.Itoa(result.LineNumber)
-		_, has := resultsMap[key]
-		// only take the first result for a line
-		if !has {
-			resultsMap[key] = result.LineContent[result.Match.Start : result.Match.End+1]
-		}
-	}
-	return resultsMap
-}
-
-func getGrepResults(path string, regex string) map[int]string {
-	sanitizedGrep := sanitize(regex)
-	grepResults := grep(sanitizedGrep, path)
-	grepResultsMap := make(map[int]string)
-	for _, res := range grepResults {
-		grepResultsMap[res.line] = res.content
-	}
-	return grepResultsMap
-}
-
-func getSearchResults(filePath string, regex string) map[int]string {
-	newSearch := search.NewSearch(filePath)
-	newSearch.LoadInMemory()
-	newSearch.LoadLinesInMemory()
-
-	out := make(chan search.Result)
-	go newSearch.SearchRegex(context.Background(), regex, out)
-
-	searchResultsMap := make(map[int]string)
-	for result := range out {
-		if result.Finished {
-			break
-		}
-		_, has := searchResultsMap[result.LineNumber]
-		// only take the first result for a line
-		if !has {
-			searchResultsMap[result.LineNumber] = result.LineContent[result.Match.Start : result.Match.End+1]
-		}
-	}
-	return searchResultsMap
-}
-
-func sanitize(regex string) string {
-	var res string
-	escapableCharacters := map[rune]bool{
-		'(': true,
-		')': true,
-		'|': true,
-		'+': true,
-		'?': true,
-	}
-	for _, char := range regex {
-		if escapableCharacters[char] {
-			res += "\\" + string(char)
-		} else {
-			res += string(char)
-		}
-	}
-	return res
-}
-
-func grep(regex, path string) []grepResult {
-	out := bytes.Buffer{}
-	cmd := exec.Command("grep", "-nro", regex, ".."+path)
-	cmd.Stdout = &out
-	err := cmd.Run()
-	if err != nil {
-		panic(err)
+func BenchmarkTrigramIndexedDirectorySearch(b *testing.B) {
+	type test struct {
+		path, regex string
 	}
 
-	s := out.String()
-	lines := strings.Split(s, "\n")
-	results := make([]grepResult, 0, len(lines))
-	for _, line := range lines {
-		after := strings.SplitAfter(line, fmt.Sprintf(path+"/"))
-		if len(after) < 2 {
-			continue
-		}
-		res := after[1]
-		data := strings.SplitN(res, ":", 3)
-		page := data[0]
-		line, err := strconv.Atoi(data[1])
-		if err != nil {
-			panic(err)
-		}
-		content := data[2]
-		results = append(results, grepResult{
-			file:    page,
-			line:    line,
-			content: content,
+	tests := []test{
+		// for a specific case like this, the trigram index can filter out almost all the files where we
+		// shouldn't search.
+
+		// 19,494,433 ns/op - with index
+		// vs
+		// 5,953,637,518 ns/op - without index
+		// == 305x speedup!
+		{path: "/data/bible-in-pages", regex: "Shobek"},
+
+		// for a common word such as this, the trigram index doesn't filter many files so the results are
+		// less dramatic.
+
+		// 2,595,302,207 ns/op - with index
+		// vs
+		// 6,172,375,438 ns/op - without index
+		// == 2x speedup
+		{path: "/data/bible-in-pages", regex: "god"},
+
+		// as this case is uses a regex search too small for trigram filtering, we would expect the results to be
+		// more or less the same
+
+		// 7,137,193,041 ns/op - with index
+		// vs
+		// 6,320,655,498 ns/op - without index
+		// == no speedup (actually a little slower)
+		{path: "/data/bible-in-pages", regex: "ab"},
+	}
+
+	for _, t := range tests {
+		b.Run(fmt.Sprintf("test with regex: With Index: '%s'", t.regex), func(b *testing.B) {
+			index := trigram.Index(".." + t.path)
+			for i := 0; i < b.N; i++ {
+				searchWithIndex(index, t)
+			}
+		})
+
+		b.Run(fmt.Sprintf("test with regex: Without Index: '%s'", t.regex), func(b *testing.B) {
+			for i := 0; i < b.N; i++ {
+				search.NewSearch(".." + t.path).SearchDirectoryRegex(t.regex)
+			}
 		})
 	}
-	return results
 }

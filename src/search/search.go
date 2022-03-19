@@ -102,39 +102,44 @@ func (s *search) SearchDirectoryRegex(regex string) []ResultWithFile {
 
 	for _, entry := range dir {
 		if !entry.IsDir() {
-			ctx, cancelFunc := context.WithCancel(ctx)
-
-			path := filepath.Join(s.filePath, entry.Name())
-
-			file, err := os.ReadFile(path)
-			if err != nil {
-				panic("cannot read file")
-			}
-
-			state := finite_state_machine.Compile(regex)
-			runner := finite_state_machine.NewRunner(state)
-
-			results := finite_state_machine.FindAllWithLines(ctx, runner, string(file))
-
-			count := 0
-			lines := strings.Split(string(file), "\n")
-			for _, result := range results {
-				res = append(res, ResultWithFile{
-					Result: Result{
-						LineNumber:  result.Line,
-						LineContent: lines[result.Line-1],
-						Match:       Match{Start: result.Start, End: result.End},
-						Count:       count,
-						Query:       regex,
-						Finished:    false,
-					},
-					File: entry.Name(),
-				})
-				count++
-			}
-			cancelFunc()
+			res = append(res, s.SearchFile(ctx, regex, entry.Name())...)
 		}
 	}
+	return res
+}
+
+func (s *search) SearchFile(ctx context.Context, regex, fileName string) (res []ResultWithFile) {
+	ctx, cancelFunc := context.WithCancel(ctx)
+
+	path := filepath.Join(s.filePath, fileName)
+
+	file, err := os.ReadFile(path)
+	if err != nil {
+		panic("cannot read file")
+	}
+
+	state := finite_state_machine.Compile(regex)
+	runner := finite_state_machine.NewRunner(state)
+
+	results := finite_state_machine.FindAllWithLines(ctx, runner, string(file))
+
+	count := 0
+	lines := strings.Split(string(file), "\n")
+	for _, result := range results {
+		res = append(res, ResultWithFile{
+			Result: Result{
+				LineNumber:  result.Line,
+				LineContent: lines[result.Line-1],
+				Match:       Match{Start: result.Start, End: result.End},
+				Count:       count,
+				Query:       regex,
+				Finished:    false,
+			},
+			File: fileName,
+		})
+		count++
+	}
+	cancelFunc()
 	return res
 }
 
