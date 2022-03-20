@@ -8,6 +8,7 @@ import (
 	"search/src/screen"
 	"search/src/search"
 	"search/src/trigram"
+	"sort"
 	"strconv"
 	"strings"
 )
@@ -64,6 +65,7 @@ Candidate Files: {{ .Candidates }}
 	var queryResults [][]search.ResultWithFile
 	cancel, cancelFunc := context.WithCancel(ctx)
 	previousLine := -1 // start at negative as there is no previous line at first
+	previousFile := "" // start at empty as there is no previous file at first
 	offset := 0
 	for {
 		select {
@@ -86,6 +88,7 @@ Candidate Files: {{ .Candidates }}
 				state = displayState{Target: t}
 				offset = 0
 				previousLine = -1
+				previousFile = ""
 				queryResults = [][]search.ResultWithFile{}
 				cancelFunc()
 				cancel, cancelFunc = context.WithCancel(ctx)
@@ -104,7 +107,8 @@ Candidate Files: {{ .Candidates }}
 			if r.Query != currentQuery {
 				continue
 			}
-			if previousLine == r.LineNumber {
+			// this assumes results from same line and file will come in sequentially
+			if previousLine == r.LineNumber && r.File == previousFile {
 				lastIndex := len(queryResults) - 1
 				queryResults[lastIndex] = append(queryResults[lastIndex], r)
 			} else {
@@ -117,6 +121,7 @@ Candidate Files: {{ .Candidates }}
 			}
 			sc.SetState(state)
 			previousLine = r.LineNumber
+			previousFile = r.File
 		}
 	}
 }
@@ -230,13 +235,15 @@ func getStateNEW(queryResults [][]search.ResultWithFile, state displayState, off
 func formatLinesNEW(lineResults [][]search.ResultWithFile, offset int) []string {
 	res := make([]string, 0, len(lineResults))
 	for i, r := range lineResults {
-		res = append(res, fmt.Sprintf(
-			"%d: [file:%s] line-%s: \"%s\"",
-			i+1+offset,
-			r[0].File,
-			strconv.Itoa(r[0].LineNumber),
-			buildLine(r[0].LineContent, matchesFromResultsNEW(r)),
-		))
+		for _, resultWithFile := range r {
+			res = append(res, fmt.Sprintf(
+				"%d: [file:%s] line-%s: \"%s\"",
+				i+1+offset,
+				resultWithFile.File,
+				strconv.Itoa(resultWithFile.LineNumber),
+				buildLine(resultWithFile.LineContent, matchesFromResultsNEW(r)),
+			))
+		}
 	}
 	return res
 }
@@ -301,6 +308,9 @@ func reduceMatches(matches []search.Match) []search.Match {
 			res = append(res, match)
 		}
 	}
+	sort.Slice(res, func(i, j int) bool {
+		return res[i].End < res[j].End
+	})
 	return res
 }
 
