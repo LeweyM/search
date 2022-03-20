@@ -1,32 +1,57 @@
 package integration
 
 import (
+	"fmt"
 	"search/src/trigram"
 	"strings"
 	"testing"
 )
 
 func TestTrigramIndexer(t *testing.T) {
-	path := "../data/bible-in-pages"
-	index := trigram.Index(path)
+	type test struct {
+		path, query string
+	}
 
-	testFileCandidatesAreTheSameAsGrep(t, index, path, "Shobek")
+	tests := []test{
+		{path: "../data/bible-in-pages", query: "Shobek"},
+		{path: "../data/bible-in-pages", query: "god"},
+	}
+
+	for _, t2 := range tests {
+		t.Run(fmt.Sprintf("[Trigram Indexer] Test that file candiates are the same as grep for query (%s)", t2.query), func(t *testing.T) {
+			testFileCandidatesAreTheSameAsGrep(t, t2.path, t2.query)
+		})
+	}
 }
 
-func testFileCandidatesAreTheSameAsGrep(t *testing.T, index *trigram.Indexer, path, query string) {
+func testFileCandidatesAreTheSameAsGrep(t *testing.T, path, query string) {
+	index := trigram.Index(path)
 	files := index.Lookup(trigram.Query(query))
-	fileMap := stringsToMap(files)
+	trigramResults := stringsToMap(files)
 	grepResult := getDirectoryGrepResults(query, path)
-	for k := range grepResult {
-		fileParts := strings.Split(k, "-")
-		file := path + "/" + strings.Join([]string{fileParts[0], fileParts[1], fileParts[2]}, "-")
-		_, hasFile := fileMap[file]
+	grepPagesMap := toPagesMap(grepResult, path)
+	for grepFile := range grepPagesMap {
+		_, hasFile := trigramResults[grepFile]
 		if !hasFile {
-			t.Fatalf("Expected search to find [%s]", file)
+			t.Fatalf("Expected search to find [%s]", grepFile)
 		}
-		delete(fileMap, file)
+		delete(trigramResults, grepFile)
 	}
-	if len(fileMap) > 0 {
-		t.Fatalf("Search found additional results to grep: %v", fileMap)
+	if len(trigramResults) > 0 {
+		t.Fatalf("Search found additional results to grep: %v", trigramResults)
 	}
+}
+
+func toPagesMap(result map[string]string, path string) map[string]struct{} {
+	res := make(map[string]struct{}, len(result))
+	for fileAndLine, _ := range result {
+		res[buildFileName(fileAndLine, path)] = struct{}{}
+	}
+	return res
+}
+
+func buildFileName(k string, path string) string {
+	fileParts := strings.Split(k, "-")
+	file := path + "/" + strings.Join([]string{fileParts[0], fileParts[1], fileParts[2]}, "-")
+	return file
 }
