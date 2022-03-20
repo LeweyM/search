@@ -23,7 +23,7 @@ type test struct {
 // 5,953,637,518 ns/op - without index
 // == 305x speedup!
 func BenchmarkTrigramIndexedDirectorySearchEasy(b *testing.B) {
-	compareIndexedAndNotIndexedPerformance(b, test{path: "/data/bible-in-pages", regex: "Shobek"})
+	compareIndexedAndNotIndexedPerformance(b, test{path: "../data/bible-in-pages", regex: "Shobek"})
 }
 
 // for a common word such as this, the trigram index doesn't filter many files so the results are
@@ -36,7 +36,7 @@ func BenchmarkTrigramIndexedDirectorySearchEasy(b *testing.B) {
 // 6,172,375,438 ns/op - without index
 // == 2-3x speedup
 func BenchmarkTrigramIndexedDirectorySearchMedium(b *testing.B) {
-	compareIndexedAndNotIndexedPerformance(b, test{path: "/data/bible-in-pages", regex: "god"})
+	compareIndexedAndNotIndexedPerformance(b, test{path: "../data/bible-in-pages", regex: "god"})
 }
 
 // as this case is uses a regex search too small for trigram filtering, we would expect the results to be
@@ -49,14 +49,14 @@ func BenchmarkTrigramIndexedDirectorySearchMedium(b *testing.B) {
 // 6,320,655,498 ns/op - without index
 // == no speedup (actually a little slower)
 func BenchmarkTrigramIndexedDirectorySearchHard(b *testing.B) {
-	compareIndexedAndNotIndexedPerformance(b, test{path: "/data/bible-in-pages", regex: "ab"})
+	compareIndexedAndNotIndexedPerformance(b, test{path: "../data/bible-in-pages", regex: "ab"})
 }
 
 func compareIndexedAndNotIndexedPerformance(b *testing.B, t test) {
-	index := trigram.Index(".." + t.path)
+	index := trigram.Index(t.path)
 	lookup := index.Lookup(trigram.Query(t.regex))
 
-	dir, err := os.ReadDir(".." + t.path)
+	dir, err := os.ReadDir(t.path)
 	if err != nil {
 		panic(err)
 	}
@@ -71,7 +71,7 @@ func compareIndexedAndNotIndexedPerformance(b *testing.B, t test) {
 	b.Logf("Searching in %d files.", len(dir))
 	b.Run(fmt.Sprintf("test with regex: Without Index: '%s'", t.regex), func(b *testing.B) {
 		for i := 0; i < b.N; i++ {
-			search.NewSearch(".."+t.path).SearchDirectoryRegex(context2.TODO(), t.regex)
+			search.NewSearch(t.path).SearchDirectoryRegex(context2.TODO(), t.regex)
 		}
 	})
 }

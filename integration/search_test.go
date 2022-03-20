@@ -9,21 +9,21 @@ import (
 // Slow tests which compare search results to grep search results.
 func TestIntegration(t *testing.T) {
 	type test struct {
-		searchPath, grepPath, regex string
+		path, regex string
 	}
 
 	tests := []test{
-		{searchPath: "../data/bible/bible.txt", grepPath: "/data/bible/", regex: "(G|g)od"},
-		{searchPath: "../data/bible/bible.txt", grepPath: "/data/bible/", regex: "heaven.*hell"},
-		{searchPath: "../data/bible/bible.txt", grepPath: "/data/bible/", regex: "gos?"},
-		{searchPath: "../data/bible/bible.txt", grepPath: "/data/bible/", regex: "go+d"},
-		{searchPath: "../data/bible/bible.txt", grepPath: "/data/bible/", regex: "(beast|burden)"},
+		{path: "../data/bible/bible.txt", regex: "(G|g)od"},
+		{path: "../data/bible/bible.txt", regex: "heaven.*hell"},
+		{path: "../data/bible/bible.txt", regex: "gos?"},
+		{path: "../data/bible/bible.txt", regex: "go+d"},
+		{path: "../data/bible/bible.txt", regex: "(beast|burden)"},
 	}
 
 	for _, t2 := range tests {
-		t.Run(fmt.Sprintf("test against grep with regex: '%s'", t2.regex), func(t *testing.T) {
-			grepResultsMap := getGrepResults(t2.grepPath, t2.regex)
-			searchResultsMap := getSearchResults(t2.searchPath, t2.regex)
+		t.Run(fmt.Sprintf("test file search against grep with regex: '%s'", t2.regex), func(t *testing.T) {
+			grepResultsMap := getGrepResults(t2.path, t2.regex)
+			searchResultsMap := getSearchResults(t2.path, t2.regex)
 			for k, v := range grepResultsMap {
 				content, hasLine := searchResultsMap[k]
 				if !hasLine {
@@ -43,16 +43,16 @@ func TestDirectorySearch(t *testing.T) {
 	}
 
 	tests := []test{
-		{path: "/data/bible-in-pages", regex: "(G|g)od"},
-		{path: "/data/bible-in-pages", regex: "heaven.*hell"},
-		{path: "/data/bible-in-pages", regex: "gos?"},
-		{path: "/data/bible-in-pages", regex: "go+d"},
-		{path: "/data/bible-in-pages", regex: "(beast|burden)"},
+		{path: "../data/bible-in-pages", regex: "(G|g)od"},
+		{path: "../data/bible-in-pages", regex: "heaven.*hell"},
+		{path: "../data/bible-in-pages", regex: "gos?"},
+		{path: "../data/bible-in-pages", regex: "go+d"},
+		{path: "../data/bible-in-pages", regex: "(beast|burden)"},
 	}
 
 	for _, t2 := range tests {
-		t.Run(fmt.Sprintf("test against grep with regex: '%s'", t2.regex), func(t *testing.T) {
-			trigram.Index(".." + t2.path)
+		t.Run(fmt.Sprintf("test directory search against grep with regex: '%s'", t2.regex), func(t *testing.T) {
+			trigram.Index(t2.path)
 			resultsMap := getDirectorySearchResults(t2.path, t2.regex)
 			grepResultsMap := getDirectoryGrepResults(t2.regex, t2.path)
 			for k, v := range grepResultsMap {

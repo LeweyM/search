@@ -23,7 +23,7 @@ func searchWithIndex(index *trigram.Indexer, t struct {
 }) {
 
 	fileCandidates := index.Lookup(trigram.Query(t.regex))
-	newSearch := search.NewSearch(".." + t.path)
+	newSearch := search.NewSearch(t.path)
 	var results []search.ResultWithFile
 	for _, fileCandidate := range fileCandidates {
 		filename := strings.Split(fileCandidate, "/")
@@ -42,7 +42,7 @@ func getDirectoryGrepResults(regex string, path string) map[string]string {
 }
 
 func getDirectorySearchResults(path string, regex string) map[string]string {
-	newSearch := search.NewSearch(".." + path)
+	newSearch := search.NewSearch(path)
 	results := newSearch.SearchDirectoryRegex(context.TODO(), regex)
 	resultsMap := make(map[string]string)
 	for _, result := range results {
@@ -112,7 +112,7 @@ func sanitize(regex string) string {
 
 func grep(regex, path string) []grepResult {
 	out := bytes.Buffer{}
-	cmd := exec.Command("grep", "-nro", regex, ".."+path)
+	cmd := exec.Command("grep", "-nro", regex, path)
 	cmd.Stdout = &out
 	err := cmd.Run()
 	if err != nil {

@@ -7,15 +7,16 @@ import (
 )
 
 func TestTrigramIndexer(t *testing.T) {
-	// search for word 'Shobek'
 	path := "../data/bible-in-pages"
-
 	index := trigram.Index(path)
-	files := index.Lookup(trigram.Query("Shobek"))
+
+	testFileCandidatesAreTheSameAsGrep(t, index, path, "Shobek")
+}
+
+func testFileCandidatesAreTheSameAsGrep(t *testing.T, index *trigram.Indexer, path, query string) {
+	files := index.Lookup(trigram.Query(query))
 	fileMap := stringsToMap(files)
-
-	grepResult := getDirectoryGrepResults("Shobek", "/data/bible-in-pages")
-
+	grepResult := getDirectoryGrepResults(query, path)
 	for k := range grepResult {
 		fileParts := strings.Split(k, "-")
 		file := path + "/" + strings.Join([]string{fileParts[0], fileParts[1], fileParts[2]}, "-")
@@ -28,6 +29,4 @@ func TestTrigramIndexer(t *testing.T) {
 	if len(fileMap) > 0 {
 		t.Fatalf("Search found additional results to grep: %v", fileMap)
 	}
-
-	print(files)
 }
