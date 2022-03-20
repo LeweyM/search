@@ -38,12 +38,7 @@ func Index(dirPath string) *Indexer {
 }
 
 func (i *Indexer) Lookup(q *query) []string {
-	if q.any {
-		return i.fileMap
-	}
-
 	filesIndices := q.Lookup(i)
-
 	return i.getFilePathsFromIndices(filesIndices)
 }
 

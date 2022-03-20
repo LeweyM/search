@@ -1,7 +1,8 @@
 package trigram
 
+import "strings"
+
 type query struct {
-	any       bool
 	trigrams  []queryable
 	rootQuery queryable
 	index     *Indexer
@@ -18,52 +19,44 @@ func (q *query) Lookup(index *Indexer) []int {
 	return q.rootQuery.lookup(index)
 }
 
+// compile has a recursive definition
+//
+// for concatenations, ors are used...
+//
+// compile(abcde) == compile(abcd) OR compile(cde)
+// compile(cde) == trigram(cde)
+// compile(abcd) == compile(abc) OR compile(bcd)
+// compile(abc) == trigram(abc)
+// compile(bcd) == trigram(bcd)
+// so
+// compile(abcde) == trigram(abc) OR trigram(bcd) OR trigram(cde)
+//
+// for pipes, ands are used...
+//
+// compile(abc|defg) == compile(abc) AND compile(defg)
+// compile(abc|defg) == compile(abc) AND compile(def) OR compile(efg)
+// compile(abc|defg) == trigram(abc) AND trigram(def) OR trigram(efg)
 func (q *query) compile(exp string) queryable {
 	if len(exp) < 3 {
-		q.any = true
-		return nil // TODO
+		return &any{}
 	}
 
 	if len(exp) == 3 {
-		return &trigram{
-			val: exp,
-		}
+		return &trigram{val: exp}
 	}
 
-	return &or{
-		a: &trigram{
-			val: exp[0:3],
-		},
-		b: q.compile(exp[1:]),
-	}
-}
-
-// intersectPair assumes that a b are both sorted and that there are no duplicates
-// [0, 2, 5, 7]
-// [3, 4, 5, 6, 7, 8]
-// => [5, 7]
-
-// algorithm:
-
-// two pointers, march the lowest,
-// if they point to the same value, add and march both
-// if you reach the end of either list, return
-func intersectPair(A []int, B []int) (res []int) {
-	if len(A) == 0 || len(B) == 0 {
-		return res
-	}
-	a, b := 0, 0
-	for {
-		if A[a] == B[b] {
-			res = append(res, A[a])
+	containsPipe := strings.Contains(exp, "|")
+	// no pipe
+	if containsPipe {
+		pipeSplit := strings.SplitN(exp, "|", 2)
+		return &and{
+			a: q.compile(pipeSplit[0]),
+			b: q.compile(pipeSplit[1]),
 		}
-		if A[a] > B[b] {
-			b++
-		} else {
-			a++
-		}
-		if a >= len(A) || b >= len(B) {
-			return res
+	} else {
+		return &or{
+			a: q.compile(exp[0:3]),
+			b: q.compile(exp[1:]),
 		}
 	}
 }
@@ -86,4 +79,22 @@ type trigram struct {
 
 func (t *trigram) lookup(indexer *Indexer) []int {
 	return indexer.trigramToFiles[t.val]
+}
+
+type and struct {
+	a, b queryable
+}
+
+func (a *and) lookup(indexer *Indexer) []int {
+	return unionPair(a.a.lookup(indexer), a.b.lookup(indexer))
+}
+
+type any struct{}
+
+func (a *any) lookup(indexer *Indexer) []int {
+	res := make([]int, len(indexer.fileMap))
+	for i := range res {
+		res[i] = i
+	}
+	return res
 }
