@@ -15,6 +15,7 @@ func TestTrigramIndexer(t *testing.T) {
 	tests := []test{
 		{path: "../data/bible-in-pages", query: "Shobek"},
 		{path: "../data/bible-in-pages", query: "god"},
+		{path: "../data/bible-in-pages", query: "sadness"},
 	}
 
 	for _, t2 := range tests {
@@ -25,20 +26,21 @@ func TestTrigramIndexer(t *testing.T) {
 }
 
 func testFileCandidatesAreTheSameAsGrep(t *testing.T, path, query string) {
-	index := trigram.Index(path)
-	files := index.Lookup(trigram.Query(query))
-	trigramResults := stringsToMap(files)
-	grepResult := getDirectoryGrepResults(query, path)
-	grepPagesMap := toPagesMap(grepResult, path)
-	for grepFile := range grepPagesMap {
-		_, hasFile := trigramResults[grepFile]
+	trigramResultSet := stringsToMap(trigram.Index(path).Lookup(trigram.Query(query)))
+	grepPagesSet := toPagesMap(getDirectoryGrepResults(query, path), path)
+	for grepFile := range grepPagesSet {
+		_, hasFile := trigramResultSet[grepFile]
 		if !hasFile {
-			t.Fatalf("Expected search to find [%s]", grepFile)
+			// The trigram index cannot produce false negatives. If it does not provide a candidate
+			// which would contain a positive match, the index is incorrect.
+			t.Fatalf("Trigram lookup failed to provide candidate [%s]", grepFile)
 		}
-		delete(trigramResults, grepFile)
+		delete(trigramResultSet, grepFile)
 	}
-	if len(trigramResults) > 0 {
-		t.Fatalf("Search found additional results to grep: %v", trigramResults)
+	if len(trigramResultSet) > 0 {
+		// The trigram index can produce false positives, so it's not incorrect for it to produce candidates
+		// which do not match the search.
+		t.Logf("Trigram lookup found [%d] additional candiates which did not contain matches: %v", len(trigramResultSet), trigramResultSet)
 	}
 }
 
