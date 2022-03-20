@@ -70,6 +70,16 @@ type or struct {
 }
 
 func (o *or) lookup(indexer *Indexer) []int {
+	// intersect(x, ANY) is always x, so skip the calculation
+	_, ok := o.a.(*any)
+	if ok {
+		return o.b.lookup(indexer)
+	}
+	_, ok = o.b.(*any)
+	if ok {
+		return o.a.lookup(indexer)
+	}
+
 	return intersectPair(o.a.lookup(indexer), o.b.lookup(indexer))
 }
 
@@ -86,6 +96,15 @@ type and struct {
 }
 
 func (a *and) lookup(indexer *Indexer) []int {
+	// union(x, ANY) is always ANY, so skip the calculation
+	anya, ok := a.a.(*any)
+	if ok {
+		return anya.lookup(indexer)
+	}
+	anyb, ok := a.b.(*any)
+	if ok {
+		return anyb.lookup(indexer)
+	}
 	return unionPair(a.a.lookup(indexer), a.b.lookup(indexer))
 }
 
