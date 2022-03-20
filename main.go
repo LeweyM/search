@@ -13,19 +13,32 @@ import (
 	"strings"
 )
 
-const RED_ANSI = "\u001b[31m"
-const RESET_ANSI = "\u001b[0m"
+const RedAnsi = "\u001b[31m"
+const ResetAnsi = "\u001b[0m"
 
 func main() {
 	input := make(chan string)
-	io := os.Stdin
+	inputOutput := os.Stdin
 	sc := screen.NewScreen(os.Stdout, input)
 	ctx := context.Background()
 
-	sc.Run(ctx, io, func() { os.Exit(1) })
+	sc.Run(ctx, inputOutput, func() { os.Exit(1) })
+	path := os.Args[1]
 
-	//list(ctx, input, sc, "./data/bible/bible.txt")
-	listDir(ctx, input, sc, "./data/bible-in-pages/")
+	file, err := os.Open(path)
+	if err != nil {
+		panic(err)
+	}
+	fileInfo, err := file.Stat()
+	if err != nil {
+		panic(err)
+	}
+	if fileInfo.IsDir() {
+		listDir(ctx, input, sc, path)
+	} else {
+		list(ctx, input, sc, path)
+	}
+	return
 }
 
 type displayState struct {
@@ -286,16 +299,16 @@ func buildLine(content string, matches []search.Match) string {
 	last := 0
 	for _, m := range reducedMatches {
 		segments = append(segments, content[last:m.Start])
-		segments = append(segments, RED_ANSI)
+		segments = append(segments, RedAnsi)
 		segments = append(segments, content[m.Start:m.End+1])
-		segments = append(segments, RESET_ANSI)
+		segments = append(segments, ResetAnsi)
 		last = m.End + 1
 	}
 	segments = append(segments, content[last:])
 	line := strings.Join(segments, "")
 	line = strings.ReplaceAll(line, "\n", " \\n ")
 	line = strings.TrimSpace(line)
-	return line + RESET_ANSI
+	return line + ResetAnsi
 }
 
 func reduceMatches(matches []search.Match) []search.Match {
