@@ -16,6 +16,7 @@ func TestTrigramIndexer(t *testing.T) {
 		{path: "../data/bible-in-pages", query: "Shobek"},
 		{path: "../data/bible-in-pages", query: "god"},
 		{path: "../data/bible-in-pages", query: "sadness"},
+		{path: "../data/bible-in-pages", query: "beast|burden"},
 	}
 
 	for _, t2 := range tests {

@@ -42,24 +42,18 @@ func (i *Indexer) Lookup(q *query) []string {
 		return i.fileMap
 	}
 
-	trigrams := q.Trigrams()
-	files := make([]string, 0)
+	filesIndices := q.Lookup(i)
 
-	var trigramResults [][]int
-	for _, trigram := range trigrams {
-		fileIndices, ok := i.trigramToFiles[trigram]
-		if !ok {
-			continue
-		}
-		trigramResults = append(trigramResults, fileIndices)
+	return i.getFilePathsFromIndices(filesIndices)
+}
+
+func (i *Indexer) getFilePathsFromIndices(filesIndices []int) []string {
+	var filesPaths []string
+	for _, fileIndex := range filesIndices {
+		filePath := i.fileMap[fileIndex]
+		filesPaths = append(filesPaths, filePath)
 	}
-
-	intersection := intersect(trigramResults)
-
-	for _, fileIndex := range intersection {
-		files = append(files, i.fileMap[fileIndex])
-	}
-	return files
+	return filesPaths
 }
 
 func (i *Indexer) readDirectory(dirPath string) {
@@ -74,48 +68,6 @@ func (i *Indexer) readDirectory(dirPath string) {
 			i.fileMap = append(i.fileMap, path)
 		}
 	}
-}
-
-// intersectPair assumes that a b are both sorted and that there are no duplicates
-// [0, 2, 5, 7]
-// [3, 4, 5, 6, 7, 8]
-// => [5, 7]
-
-// algorithm:
-
-// two pointers, march the lowest,
-// if they point to the same value, add and march both
-// if you reach the end of either list, return
-func intersectPair(A []int, B []int) (res []int) {
-	if len(A) == 0 || len(B) == 0 {
-		return res
-	}
-	a, b := 0, 0
-	for {
-		if A[a] == B[b] {
-			res = append(res, A[a])
-		}
-		if A[a] > B[b] {
-			b++
-		} else {
-			a++
-		}
-		if a >= len(A) || b >= len(B) {
-			return res
-		}
-	}
-}
-
-// intersect repeatedly applies intersectPair to all lists in the 2d array until we have the total intersection
-func intersect(list [][]int) (res []int) {
-	for _, item := range list {
-		if res == nil {
-			res = item
-		} else {
-			res = intersectPair(res, item)
-		}
-	}
-	return res
 }
 
 func (i *Indexer) index(reader io.RuneReader, fileIndex int) {

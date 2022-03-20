@@ -2,7 +2,6 @@ package integration
 
 import (
 	"fmt"
-	"search/src/trigram"
 	"testing"
 )
 
@@ -52,7 +51,6 @@ func TestDirectorySearch(t *testing.T) {
 
 	for _, t2 := range tests {
 		t.Run(fmt.Sprintf("test directory search against grep with regex: '%s'", t2.regex), func(t *testing.T) {
-			trigram.Index(t2.path)
 			resultsMap := getDirectorySearchResults(t2.path, t2.regex)
 			grepResultsMap := getDirectoryGrepResults(t2.regex, t2.path)
 			for k, v := range grepResultsMap {
