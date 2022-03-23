@@ -2,6 +2,7 @@ package trigram
 
 import (
 	"bufio"
+	"encoding/json"
 	"io"
 	"os"
 	"path/filepath"
@@ -19,7 +20,7 @@ func newIndexer() *Indexer {
 	}
 }
 
-func Index(dirPath string) *Indexer {
+func Index(dirPath string, outputToJson bool) *Indexer {
 	indexer := newIndexer()
 	indexer.readDirectory(dirPath)
 
@@ -34,12 +35,43 @@ func Index(dirPath string) *Indexer {
 		fileIndex++
 	}
 
+	if outputToJson {
+		writeIndexToJsonFile(indexer)
+	}
+
 	return indexer
 }
 
 func (i *Indexer) Lookup(q *query) []string {
 	filesIndices := q.Lookup(i)
 	return i.getFilePathsFromIndices(filesIndices)
+}
+
+func writeIndexToJsonFile(indexer *Indexer) {
+	f, _ := os.Create("./index.json")
+	defer f.Close()
+
+	type jsonStructure struct {
+		Trigram string `json:"trigram,omitempty"`
+		Results int    `json:"results,omitempty"`
+	}
+	var res []jsonStructure
+	for ngram, ints := range indexer.trigramToFiles {
+		res = append(res, jsonStructure{
+			Trigram: ngram,
+			Results: len(ints),
+		})
+	}
+
+	marshal, err := json.Marshal(res)
+	if err != nil {
+		panic(err)
+	}
+
+	_, err = f.Write(marshal)
+	if err != nil {
+		panic(err)
+	}
 }
 
 func (i *Indexer) getFilePathsFromIndices(filesIndices []int) []string {

@@ -2,6 +2,8 @@ package trigram
 
 import "strings"
 
+const pipe = "|"
+
 type query struct {
 	trigrams  []queryable
 	rootQuery queryable
@@ -45,10 +47,10 @@ func (q *query) compile(exp string) queryable {
 		return &trigram{val: exp}
 	}
 
-	containsPipe := strings.Contains(exp, "|")
+	containsPipe := strings.Contains(exp, pipe)
 	// no pipe
 	if containsPipe {
-		pipeSplit := strings.SplitN(exp, "|", 2)
+		pipeSplit := strings.SplitN(exp, pipe, 2)
 		return &and{
 			a: q.compile(pipeSplit[0]),
 			b: q.compile(pipeSplit[1]),

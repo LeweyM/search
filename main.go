@@ -59,7 +59,7 @@ type Screen interface {
 
 func listDir(ctx context.Context, input chan string, sc Screen, path string) {
 	se := search.NewSearch(path)
-	index := trigram.Index(path)
+	index := trigram.Index(path, false) // TODO: use a flag to write to json
 
 	currentQuery := ""
 
@@ -248,15 +248,13 @@ func getStateNEW(queryResults [][]search.ResultWithFile, state displayState, off
 func formatLinesNEW(lineResults [][]search.ResultWithFile, offset int) []string {
 	res := make([]string, 0, len(lineResults))
 	for i, r := range lineResults {
-		for _, resultWithFile := range r {
-			res = append(res, fmt.Sprintf(
-				"%d: [file:%s] line-%s: \"%s\"",
-				i+1+offset,
-				resultWithFile.File,
-				strconv.Itoa(resultWithFile.LineNumber),
-				buildLine(resultWithFile.LineContent, matchesFromResultsNEW(r)),
-			))
-		}
+		res = append(res, fmt.Sprintf(
+			"%d: [file:%s] line-%s: \"%s\"",
+			i+1+offset,
+			r[0].File,
+			strconv.Itoa(r[0].LineNumber),
+			buildLine(r[0].LineContent, matchesFromResultsNEW(r)),
+		))
 	}
 	return res
 }

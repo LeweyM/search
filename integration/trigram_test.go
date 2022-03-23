@@ -28,7 +28,7 @@ func TestTrigramIndexer(t *testing.T) {
 }
 
 func testFileCandidatesAreTheSameAsGrep(t *testing.T, path, query string) {
-	trigramResultSet := stringsToMap(trigram.Index(path).Lookup(trigram.Query(query)))
+	trigramResultSet := stringsToMap(trigram.Index(path, false).Lookup(trigram.Query(query)))
 	grepPagesSet := toPagesMap(getDirectoryGrepResults(query, path), path)
 	for grepFile := range grepPagesSet {
 		_, hasFile := trigramResultSet[grepFile]

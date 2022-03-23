@@ -10,8 +10,8 @@
 - [ ] bracket sets e.g ca[tr] == ca(t|r) 
 
 ## Code Search
-- [ ] trigram index
-- [ ] multi file distributed search (parallel?)
+- [x] trigram index
+- [x] multi file distributed search (parallel?)
 - [ ] linux code base search (66000 files) 
 
 ## ReadTime CLI

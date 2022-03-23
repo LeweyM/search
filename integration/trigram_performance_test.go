@@ -53,7 +53,7 @@ func BenchmarkTrigramIndexedDirectorySearchHard(b *testing.B) {
 }
 
 func compareIndexedAndNotIndexedPerformance(b *testing.B, t test) {
-	index := trigram.Index(t.path)
+	index := trigram.Index(t.path, false)
 	lookup := index.Lookup(trigram.Query(t.regex))
 
 	dir, err := os.ReadDir(t.path)
