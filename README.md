@@ -17,7 +17,7 @@
 ## ReadTime CLI
 - [x] updating at fixed refresh rate
 - [x] Use templating language
-- [ ] smart overwriting instead of wiping whole screen
+- [x] smart overwriting instead of wiping whole screen
 - [x] color responses
 - [x] scrollable results
 - [ ] separate input from screen
