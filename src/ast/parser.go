@@ -56,6 +56,38 @@ func (p *parser) parse(input string) Ast {
 
 			p.push(node)
 		}
+
+		if token.symbolType == LParen {
+			newGroup := &Group{}
+			p.push(stackLine{
+				tail: newGroup,
+				head: newGroup,
+			})
+		}
+
+		if token.symbolType == RParen {
+			if isInBounds(tokens, i+1) && isModifier(tokens, i+1) {
+				g := p.pop()
+
+				m := ModifierExpression{
+					expression: g.head,
+					modifier:   mapModifierTokenToAstModifier(tokens[i+1].symbolType),
+				}
+
+				next := p.pop()
+				next.tail.Append(m)
+
+				p.push(next)
+				i++
+			} else {
+				head := p.pop().head
+				next := p.pop()
+
+				next.tail.Append(head)
+
+				p.push(next)
+			}
+		}
 	}
 
 	return p.pop().head

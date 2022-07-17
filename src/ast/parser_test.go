@@ -36,6 +36,46 @@ func TestParser(t *testing.T) {
 				&Group{expressions: []Ast{CharacterLiteral{character: 'd'}}},
 			},
 		}},
+		{name: "groups", input: "(a)(bc)*(d)", expectedResult: &Group{
+			expressions: []Ast{
+				&Group{expressions: []Ast{CharacterLiteral{character: 'a'}}},
+				ModifierExpression{
+					expression: &Group{expressions: []Ast{
+						CharacterLiteral{character: 'b'},
+						CharacterLiteral{character: 'c'},
+					}},
+					modifier: zeroOrMany,
+				},
+				&Group{expressions: []Ast{CharacterLiteral{character: 'd'}}},
+			},
+		}},
+		{name: "all together", input: "(cat|(dog)(s)?)*", expectedResult: &Group{
+			expressions: []Ast{
+				ModifierExpression{
+					expression: &Branch{expressions: []Ast{
+						&Group{expressions: []Ast{
+							CharacterLiteral{character: 'c'},
+							CharacterLiteral{character: 'a'},
+							CharacterLiteral{character: 't'},
+						}},
+						&Group{expressions: []Ast{
+							&Group{expressions: []Ast{
+								CharacterLiteral{character: 'd'},
+								CharacterLiteral{character: 'o'},
+								CharacterLiteral{character: 'g'},
+							}},
+							ModifierExpression{
+								expression: &Group{expressions: []Ast{
+									CharacterLiteral{character: 's'},
+								}},
+								modifier: zeroOrOne,
+							},
+						}},
+					}},
+					modifier: zeroOrMany,
+				},
+			},
+		}},
 	}
 
 	for _, tt := range tests {
