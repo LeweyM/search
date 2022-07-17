@@ -76,9 +76,14 @@ func (m *CompilableAstModifierExpression) compile() (*State, *State) {
 
 	head, tail := getCompilableAst(m.Expression).compile()
 
-	if m.Modifier == ast.ZeroOrManyModifier {
+	switch m.Modifier {
+	case ast.ZeroOrManyModifier:
 		start.addEpsilonTransition(tail)
 		tail.addEpsilonTransition(start)
+	case ast.OneOrManyModifier:
+		tail.addEpsilonTransition(start)
+	case ast.ZeroOrOneModifier:
+		start.addEpsilonTransition(tail)
 	}
 	start.addEpsilonTransition(head)
 	tail.addEpsilonTransition(end)
