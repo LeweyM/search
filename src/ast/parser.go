@@ -10,87 +10,63 @@ type parser struct {
 
 func (p *parser) parse(input string) Ast {
 	tokens := lex(input)
-	rootGroup := Group{}
-	p.push(stackLine{
-		tail: &rootGroup,
-		head: &rootGroup,
-	})
+	p.startNewGroupOnStack()
 
 	for i, token := range tokens {
-		if token.symbolType == Character {
-			if isInBounds(tokens, i+1) && isModifier(tokens, i+1) {
-				g := p.pop()
-				g.tail.Append(ModifierExpression{
-					expression: CharacterLiteral{character: token.letter},
-					modifier:   mapModifierTokenToAstModifier(tokens[i+1].symbolType),
-				})
-				p.push(g)
-				i++
-			} else {
-				g := p.pop()
-				g.tail.Append(CharacterLiteral{character: token.letter})
-				p.push(g)
-			}
-		}
-
-		if token.symbolType == Pipe {
+		switch token.symbolType {
+		case Character:
+			p.concatToTail(tokens, i, CharacterLiteral{character: token.letter})
+		case Pipe:
 			node := p.pop()
+			newGroup := Group{}
 
 			group, isGroup := node.head.(*Group)
 			_, isBranch := node.head.(*Branch)
+
 			if isGroup {
-				// turn group into branch
-				newGroup := &Group{}
+				// wrap group in branch node
 				node.head = &Branch{expressions: []Ast{
 					group,
-					newGroup,
+					&newGroup,
 				}}
-				node.tail = newGroup
 			} else if isBranch {
-				newGroup := Group{}
+				// append new branch
 				node.head.Append(&newGroup)
-				node.tail = &newGroup
 			} else {
 				panic("must be either group or branch")
 			}
-
+			node.tail = &newGroup
 			p.push(node)
-		}
-
-		if token.symbolType == LParen {
-			newGroup := &Group{}
-			p.push(stackLine{
-				tail: newGroup,
-				head: newGroup,
-			})
-		}
-
-		if token.symbolType == RParen {
-			if isInBounds(tokens, i+1) && isModifier(tokens, i+1) {
-				g := p.pop()
-
-				m := ModifierExpression{
-					expression: g.head,
-					modifier:   mapModifierTokenToAstModifier(tokens[i+1].symbolType),
-				}
-
-				next := p.pop()
-				next.tail.Append(m)
-
-				p.push(next)
-				i++
-			} else {
-				head := p.pop().head
-				next := p.pop()
-
-				next.tail.Append(head)
-
-				p.push(next)
-			}
+		case LParen:
+			p.startNewGroupOnStack()
+		case RParen:
+			inner := p.pop()
+			p.concatToTail(tokens, i, inner.head)
 		}
 	}
 
 	return p.pop().head
+}
+
+func (p *parser) startNewGroupOnStack() {
+	newGroup := Group{}
+	p.push(stackLine{
+		tail: &newGroup,
+		head: &newGroup,
+	})
+}
+
+func (p *parser) concatToTail(tokens []symbol, i int, expression Ast) {
+	if isModifier(tokens, i+1) {
+		expression = ModifierExpression{
+			expression: expression,
+			modifier:   mapModifierTokenToAstModifier(tokens[i+1].symbolType),
+		}
+	}
+
+	g := p.pop()
+	g.tail.Append(expression)
+	p.push(g)
 }
 
 func (p *parser) pop() stackLine {
@@ -119,6 +95,10 @@ func isInBounds(tokens []symbol, i int) bool {
 }
 
 func isModifier(tokens []symbol, i int) bool {
+	if !isInBounds(tokens, i) {
+		return false
+	}
+
 	token := tokens[i]
 	return token.symbolType == ZeroOrMore || token.symbolType == ZeroOrOne || token.symbolType == OneOrMore
 }
