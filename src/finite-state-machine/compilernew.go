@@ -72,6 +72,7 @@ func (b *CompilableAstBranchNode) compile() (head *State, tail *State) {
 // Modifier
 func (m *CompilableAstModifierExpression) compile() (*State, *State) {
 	start := &State{}
+	end := &State{}
 
 	head, tail := getCompilableAst(m.Expression).compile()
 
@@ -80,8 +81,9 @@ func (m *CompilableAstModifierExpression) compile() (*State, *State) {
 		tail.addEpsilonTransition(start)
 	}
 	start.addEpsilonTransition(head)
+	tail.addEpsilonTransition(end)
 
-	return start, tail
+	return start, end
 }
 
 /*

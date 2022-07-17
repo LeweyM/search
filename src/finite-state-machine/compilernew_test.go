@@ -28,6 +28,9 @@ func TestNewCompiler(t *testing.T) {
 		{desc: "a*b with 'bb'", regex: "a*b", searchString: "bb", expectedResults: []localResult{{0, 0}, {1, 1}}},
 		{desc: "a*b with 'a'", regex: "a*b", searchString: "a"},
 		{desc: "a*b with 'aa'", regex: "a*b", searchString: "aa"},
+		{desc: "matching 0 'c's", regex: "abc*", searchString: "ab", expectedResults: []localResult{{0, 1}}},
+		{desc: "matching 1 'c'", regex: "abc*", searchString: "abc", expectedResults: []localResult{{0, 2}}},
+		{desc: "matching 2 'c's", regex: "abc*", searchString: "abcc", expectedResults: []localResult{{0, 3}}},
 	}
 
 	for _, tt := range tests {
