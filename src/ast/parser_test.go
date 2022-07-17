@@ -12,18 +12,28 @@ func TestParser(t *testing.T) {
 	}
 
 	tests := []test{
-		{name: "simple string", input: "aBc", expectedResult: Group{
+		{name: "simple string", input: "aBc", expectedResult: &Group{
 			expressions: []Ast{
 				CharacterLiteral{character: 'a'},
 				CharacterLiteral{character: 'B'},
 				CharacterLiteral{character: 'c'},
 			},
 		}},
-		{name: "modifiers", input: "a+b?c*", expectedResult: Group{
+		{name: "modifiers", input: "a+b?c*", expectedResult: &Group{
 			expressions: []Ast{
 				ModifierExpression{expression: CharacterLiteral{character: 'a'}, modifier: OneOrMany},
 				ModifierExpression{expression: CharacterLiteral{character: 'b'}, modifier: zeroOrOne},
 				ModifierExpression{expression: CharacterLiteral{character: 'c'}, modifier: zeroOrMany},
+			},
+		}},
+		{name: "branches", input: "a|bc|d", expectedResult: &Branch{
+			expressions: []Ast{
+				&Group{expressions: []Ast{CharacterLiteral{character: 'a'}}},
+				&Group{expressions: []Ast{
+					CharacterLiteral{character: 'b'},
+					CharacterLiteral{character: 'c'},
+				}},
+				&Group{expressions: []Ast{CharacterLiteral{character: 'd'}}},
 			},
 		}},
 	}
