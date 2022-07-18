@@ -19,17 +19,17 @@ type Node interface {
 type Modifier int
 
 const (
-	zeroOrOne Modifier = iota
-	zeroOrMany
-	OneOrMany
+	ZeroOrOneModifier Modifier = iota
+	ZeroOrManyModifier
+	OneOrManyModifier
 )
 
 type Group struct {
-	expressions []Ast
+	Expressions []Ast
 }
 
 func (g *Group) Append(ast Ast) {
-	g.expressions = append(g.expressions, ast)
+	g.Expressions = append(g.Expressions, ast)
 }
 
 func (g *Group) String() string {
@@ -38,7 +38,7 @@ func (g *Group) String() string {
 
 func (g *Group) string(indent int) string {
 	children := []string{}
-	for _, child := range g.expressions {
+	for _, child := range g.Expressions {
 		children = append(children, child.string(indent+1))
 	}
 
@@ -48,11 +48,11 @@ func (g *Group) string(indent int) string {
 }
 
 type Branch struct {
-	expressions []Ast
+	Expressions []Ast
 }
 
 func (b *Branch) Append(ast Ast) {
-	b.expressions = append(b.expressions, ast)
+	b.Expressions = append(b.Expressions, ast)
 }
 
 func (b *Branch) String() string {
@@ -61,7 +61,7 @@ func (b *Branch) String() string {
 
 func (b *Branch) string(indent int) string {
 	children := []string{}
-	for _, child := range b.expressions {
+	for _, child := range b.Expressions {
 		children = append(children, child.string(indent+1))
 	}
 
@@ -71,26 +71,22 @@ func (b *Branch) string(indent int) string {
 }
 
 type CharacterLiteral struct {
-	character rune
+	Character rune
 }
 
 func (c CharacterLiteral) string(indent int) string {
 	indentation := strings.Repeat(indentationFormat, indent)
 
-	return fmt.Sprintf("\n%sLiteral {%s}\n%s", indentation, string(c.character), indentation)
+	return fmt.Sprintf("\n%sLiteral {%s}\n%s", indentation, string(c.Character), indentation)
 }
 
 type ModifierExpression struct {
-	modifier   Modifier
-	expression Ast
+	Modifier   Modifier
+	Expression Ast
 }
-
-//func (m ModifierExpression) String() string {
-//	return fmt.Sprintf("[modifier: %v, character: %+v]", m.modifier, m.expression)
-//}
 
 func (m ModifierExpression) string(indent int) string {
 	indentation := strings.Repeat(indentationFormat, indent)
 
-	return fmt.Sprintf("\n%sModifier {%+v} expression {%+v}", indentation, m.modifier, m.expression.string(indent+1))
+	return fmt.Sprintf("\n%sModifier {%+v} Expression {%+v}", indentation, m.Modifier, m.Expression.string(indent+1))
 }

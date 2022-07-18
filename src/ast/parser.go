@@ -4,51 +4,50 @@ type stackLine struct {
 	tail, head Node
 }
 
-type parser struct {
+type Parser struct {
 	stack []stackLine
 }
 
-func (p *parser) parse(input string) Ast {
+func (p *Parser) Parse(input string) Ast {
 	tokens := lex(input)
-	p.startNewGroupOnStack()
+	p.pushNewGroup()
 
 	for i, token := range tokens {
 		switch token.symbolType {
 		case Character:
-			p.concatToTail(tokens, i, CharacterLiteral{character: token.letter})
+			node := p.pop()
+			node.tail.Append(p.wrapWithModifier(tokens, i, CharacterLiteral{Character: token.letter}))
+			p.push(node)
 		case Pipe:
 			node := p.pop()
 			newGroup := Group{}
-
-			group, isGroup := node.head.(*Group)
-			_, isBranch := node.head.(*Branch)
-
-			if isGroup {
-				// wrap group in branch node
-				node.head = &Branch{expressions: []Ast{
-					group,
-					&newGroup,
-				}}
-			} else if isBranch {
-				// append new branch
-				node.head.Append(&newGroup)
-			} else {
-				panic("must be either group or branch")
-			}
+			node.head = &Branch{Expressions: []Ast{
+				node.head,
+				&newGroup,
+			}}
 			node.tail = &newGroup
 			p.push(node)
 		case LParen:
-			p.startNewGroupOnStack()
+			p.pushNewGroup()
 		case RParen:
 			inner := p.pop()
-			p.concatToTail(tokens, i, inner.head)
+			outer := p.pop()
+			outer.tail.Append(p.wrapWithModifier(tokens, i, inner.head))
+			p.push(outer)
 		}
 	}
 
 	return p.pop().head
 }
 
-func (p *parser) startNewGroupOnStack() {
+func (p *Parser) wrapWithBranch(node Ast, newGroup *Group) *Branch {
+	return &Branch{Expressions: []Ast{
+		node,
+		newGroup,
+	}}
+}
+
+func (p *Parser) pushNewGroup() {
 	newGroup := Group{}
 	p.push(stackLine{
 		tail: &newGroup,
@@ -56,35 +55,32 @@ func (p *parser) startNewGroupOnStack() {
 	})
 }
 
-func (p *parser) concatToTail(tokens []symbol, i int, expression Ast) {
+func (p *Parser) wrapWithModifier(tokens []symbol, i int, expression Ast) Ast {
 	if isModifier(tokens, i+1) {
 		expression = ModifierExpression{
-			expression: expression,
-			modifier:   mapModifierTokenToAstModifier(tokens[i+1].symbolType),
+			Expression: expression,
+			Modifier:   mapModifierTokenToAstModifier(tokens[i+1].symbolType),
 		}
 	}
-
-	g := p.pop()
-	g.tail.Append(expression)
-	p.push(g)
+	return expression
 }
 
-func (p *parser) pop() stackLine {
+func (p *Parser) pop() stackLine {
 	pop := p.stack[len(p.stack)-1]
 	p.stack = p.stack[:len(p.stack)-1]
 
 	return pop
 }
 
-func (p *parser) push(g stackLine) {
+func (p *Parser) push(g stackLine) {
 	p.stack = append(p.stack, g)
 }
 
 func mapModifierTokenToAstModifier(symbolType SymbolType) Modifier {
 	m := map[SymbolType]Modifier{
-		ZeroOrOne:  zeroOrOne,
-		ZeroOrMore: zeroOrMany,
-		OneOrMore:  OneOrMany,
+		ZeroOrOne:  ZeroOrOneModifier,
+		ZeroOrMore: ZeroOrManyModifier,
+		OneOrMore:  OneOrManyModifier,
 	}
 
 	return m[symbolType]

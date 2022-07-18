@@ -13,66 +13,66 @@ func TestParser(t *testing.T) {
 
 	tests := []test{
 		{name: "simple string", input: "aBc", expectedResult: &Group{
-			expressions: []Ast{
-				CharacterLiteral{character: 'a'},
-				CharacterLiteral{character: 'B'},
-				CharacterLiteral{character: 'c'},
+			Expressions: []Ast{
+				CharacterLiteral{Character: 'a'},
+				CharacterLiteral{Character: 'B'},
+				CharacterLiteral{Character: 'c'},
 			},
 		}},
 		{name: "modifiers", input: "a+b?c*", expectedResult: &Group{
-			expressions: []Ast{
-				ModifierExpression{expression: CharacterLiteral{character: 'a'}, modifier: OneOrMany},
-				ModifierExpression{expression: CharacterLiteral{character: 'b'}, modifier: zeroOrOne},
-				ModifierExpression{expression: CharacterLiteral{character: 'c'}, modifier: zeroOrMany},
+			Expressions: []Ast{
+				ModifierExpression{Expression: CharacterLiteral{Character: 'a'}, Modifier: OneOrManyModifier},
+				ModifierExpression{Expression: CharacterLiteral{Character: 'b'}, Modifier: ZeroOrOneModifier},
+				ModifierExpression{Expression: CharacterLiteral{Character: 'c'}, Modifier: ZeroOrManyModifier},
 			},
 		}},
-		{name: "branches", input: "a|bc|d", expectedResult: &Branch{
-			expressions: []Ast{
-				&Group{expressions: []Ast{CharacterLiteral{character: 'a'}}},
-				&Group{expressions: []Ast{
-					CharacterLiteral{character: 'b'},
-					CharacterLiteral{character: 'c'},
+		{name: "branches", input: "a|bc|d", expectedResult: &Branch{[]Ast{
+			&Branch{[]Ast{
+				&Group{[]Ast{CharacterLiteral{Character: 'a'}}},
+				&Group{[]Ast{
+					CharacterLiteral{Character: 'b'},
+					CharacterLiteral{Character: 'c'},
 				}},
-				&Group{expressions: []Ast{CharacterLiteral{character: 'd'}}},
-			},
-		}},
+			}},
+			&Group{[]Ast{CharacterLiteral{Character: 'd'}}},
+		}}},
 		{name: "groups", input: "(a)(bc)*(d)", expectedResult: &Group{
-			expressions: []Ast{
-				&Group{expressions: []Ast{CharacterLiteral{character: 'a'}}},
+			Expressions: []Ast{
+				&Group{Expressions: []Ast{CharacterLiteral{Character: 'a'}}},
 				ModifierExpression{
-					expression: &Group{expressions: []Ast{
-						CharacterLiteral{character: 'b'},
-						CharacterLiteral{character: 'c'},
+					Expression: &Group{Expressions: []Ast{
+						CharacterLiteral{Character: 'b'},
+						CharacterLiteral{Character: 'c'},
 					}},
-					modifier: zeroOrMany,
+					Modifier: ZeroOrManyModifier,
 				},
-				&Group{expressions: []Ast{CharacterLiteral{character: 'd'}}},
+				&Group{Expressions: []Ast{CharacterLiteral{Character: 'd'}}},
 			},
 		}},
 		{name: "all together", input: "(cat|(dog)(s)?)*", expectedResult: &Group{
-			expressions: []Ast{
+			Expressions: []Ast{
 				ModifierExpression{
-					expression: &Branch{expressions: []Ast{
-						&Group{expressions: []Ast{
-							CharacterLiteral{character: 'c'},
-							CharacterLiteral{character: 'a'},
-							CharacterLiteral{character: 't'},
+					Expression: &Branch{Expressions: []Ast{
+						&Group{Expressions: []Ast{
+							CharacterLiteral{Character: 'c'},
+							CharacterLiteral{Character: 'a'},
+							CharacterLiteral{Character: 't'},
 						}},
-						&Group{expressions: []Ast{
-							&Group{expressions: []Ast{
-								CharacterLiteral{character: 'd'},
-								CharacterLiteral{character: 'o'},
-								CharacterLiteral{character: 'g'},
+						&Group{Expressions: []Ast{
+							&Group{Expressions: []Ast{
+								CharacterLiteral{Character: 'd'},
+								CharacterLiteral{Character: 'o'},
+								CharacterLiteral{Character: 'g'},
 							}},
 							ModifierExpression{
-								expression: &Group{expressions: []Ast{
-									CharacterLiteral{character: 's'},
+								Expression: &Group{Expressions: []Ast{
+									CharacterLiteral{Character: 's'},
 								}},
-								modifier: zeroOrOne,
+								Modifier: ZeroOrOneModifier,
 							},
 						}},
 					}},
-					modifier: zeroOrMany,
+					Modifier: ZeroOrManyModifier,
 				},
 			},
 		}},
@@ -80,9 +80,9 @@ func TestParser(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			p := parser{}
+			p := Parser{}
 
-			result := p.parse(tt.input)
+			result := p.Parse(tt.input)
 
 			if !reflect.DeepEqual(result, tt.expectedResult) {
 				t.Fatalf("Expected [%+v], got [%+v]", tt.expectedResult, result)
