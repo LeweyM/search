@@ -20,6 +20,12 @@ func TestNewCompiler(t *testing.T) {
 		// branching
 		{desc: "branch matching first branch", regex: "cat|dog", searchString: "cat", expectedResults: []localResult{{0, 2}}},
 		{desc: "branch matching second branch", regex: "cat|dog", searchString: "dog", expectedResults: []localResult{{0, 2}}},
+		{desc: "abc|def|xyz with 'abc'", regex: "abc|def|xyz", searchString: "abc", expectedResults: []localResult{{0, 2}}},
+		{desc: "abc|def|xyz with 'def'", regex: "abc|def|xyz", searchString: "def", expectedResults: []localResult{{0, 2}}},
+		{desc: "abc|def|xyz with 'xyz'", regex: "abc|def|xyz", searchString: "xyz", expectedResults: []localResult{{0, 2}}},
+		{desc: "abc|abx|aby|abz with 'abz'", regex: "abc|abx|aby|abz", searchString: "abz", expectedResults: []localResult{{0, 2}}},
+		{desc: "abc|abx|aby|abz with 'abc'", regex: "abc|abx|aby|abz", searchString: "abc", expectedResults: []localResult{{0, 2}}},
+		{desc: "abc|abx|aby|abz with 'abr'", regex: "abc|abx|aby|abz", searchString: "abr"},
 		// *
 		{desc: "a*b with 'ab'", regex: "a*b", searchString: "ab", expectedResults: []localResult{{0, 1}}},
 		{desc: "a*b with 'aab'", regex: "a*b", searchString: "aab", expectedResults: []localResult{{0, 2}}},
@@ -54,6 +60,10 @@ func TestNewCompiler(t *testing.T) {
 		{desc: "held?p? with 'hel'", regex: "held?p?", searchString: "hel.", expectedResults: []localResult{{0, 2}}},
 		{desc: "held?p? with 'helt'", regex: "held?p?", searchString: "helt", expectedResults: []localResult{{0, 2}}},
 		{desc: "ab?c? with 'abz'", regex: "ab?c?", searchString: "abz", expectedResults: []localResult{{0, 1}}},
+		// groups
+		{desc: "(l|L)et with 'light'", regex: "(l|L)et", searchString: "light"},
+		{desc: "(l|L)et with 'let'", regex: "(l|L)et", searchString: "let", expectedResults: []localResult{{0, 2}}},
+		{desc: "(l|L)et with 'Let'", regex: "(l|L)et", searchString: "Let", expectedResults: []localResult{{0, 2}}},
 	}
 
 	for _, tt := range tests {
