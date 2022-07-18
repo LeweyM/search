@@ -17,6 +17,12 @@ func TestNewCompiler(t *testing.T) {
 		// concatenation
 		{desc: "simple string matching", regex: "aaa", searchString: "aaa", expectedResults: []localResult{{0, 2}}},
 		{desc: "simple string not matching", regex: "aaa", searchString: "aab"},
+		// wildcard characters '.'
+		{desc: "a.b with empty", regex: "a.b", searchString: "", expectedResults: nil},
+		{desc: "a.b with 'ab'", regex: "a.b", searchString: "ab", expectedResults: nil},
+		{desc: "a.b with 'azb'", regex: "a.b", searchString: "azb", expectedResults: []localResult{{0, 2}}},
+		{desc: "a.b with 'acb'", regex: "a.b", searchString: "acb", expectedResults: []localResult{{0, 2}}},
+		{desc: "a.b with 'azzzb'", regex: "a.b", searchString: "azzzb", expectedResults: nil},
 		// branching
 		{desc: "branch matching first branch", regex: "cat|dog", searchString: "cat", expectedResults: []localResult{{0, 2}}},
 		{desc: "branch matching second branch", regex: "cat|dog", searchString: "dog", expectedResults: []localResult{{0, 2}}},

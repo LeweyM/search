@@ -14,6 +14,10 @@ func (p *Parser) Parse(input string) Ast {
 
 	for i, token := range tokens {
 		switch token.symbolType {
+		case AnyCharacter:
+			node := p.pop()
+			node.tail.Append(p.wrapWithModifier(tokens, i, WildcardCharacterLiteral{}))
+			p.push(node)
 		case Character:
 			node := p.pop()
 			node.tail.Append(p.wrapWithModifier(tokens, i, CharacterLiteral{Character: token.letter}))

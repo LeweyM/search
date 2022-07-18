@@ -19,6 +19,13 @@ func TestParser(t *testing.T) {
 				CharacterLiteral{Character: 'c'},
 			},
 		}},
+		{name: "wildcard character", input: "a.b", expectedResult: &Group{
+			Expressions: []Ast{
+				CharacterLiteral{Character: 'a'},
+				WildcardCharacterLiteral{},
+				CharacterLiteral{Character: 'b'},
+			},
+		}},
 		{name: "modifiers", input: "a+b?c*", expectedResult: &Group{
 			Expressions: []Ast{
 				ModifierExpression{Expression: CharacterLiteral{Character: 'a'}, Modifier: OneOrManyModifier},

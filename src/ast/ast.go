@@ -80,6 +80,14 @@ func (c CharacterLiteral) string(indent int) string {
 	return fmt.Sprintf("\n%sLiteral {%s}\n%s", indentation, string(c.Character), indentation)
 }
 
+type WildcardCharacterLiteral struct{}
+
+func (c WildcardCharacterLiteral) string(indent int) string {
+	indentation := strings.Repeat(indentationFormat, indent)
+
+	return fmt.Sprintf("\n%sWildcard Literal\n%s", indentation, indentation)
+}
+
 type ModifierExpression struct {
 	Modifier   Modifier
 	Expression Ast

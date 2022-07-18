@@ -12,6 +12,7 @@ type compilableAst interface {
 
 type CompilableAstGroupNode ast.Group
 type CompilableAstCharacterLiteral ast.CharacterLiteral
+type CompilableAstWildcardCharacterLiteral ast.WildcardCharacterLiteral
 type CompilableAstBranchNode ast.Branch
 type CompilableAstModifierExpression ast.ModifierExpression
 
@@ -31,6 +32,21 @@ func (c *CompilableAstCharacterLiteral) compile() (head *State, tail *State) {
 		to:          &endState,
 		predicate:   func(input rune) bool { return input == c.Character },
 		description: fmt.Sprintf("-- %s -->", string(c.Character)),
+	}
+
+	startingState.transitions = append(startingState.transitions, transition)
+	return &startingState, &endState
+}
+
+// WildcardCharacterLiteral
+func (c CompilableAstWildcardCharacterLiteral) compile() (head *State, tail *State) {
+	startingState := State{}
+	endState := State{}
+
+	transition := Transition{
+		to:          &endState,
+		predicate:   func(input rune) bool { return true },
+		description: fmt.Sprintf("-- . -->"),
 	}
 
 	startingState.transitions = append(startingState.transitions, transition)
@@ -105,6 +121,9 @@ func getCompilableAst(a ast.Ast) compilableAst {
 	case ast.CharacterLiteral:
 		compilableAstCharacterLiteral := CompilableAstCharacterLiteral(node)
 		return &compilableAstCharacterLiteral
+	case ast.WildcardCharacterLiteral:
+		compilableAstWildcardCharacterLiteral := CompilableAstWildcardCharacterLiteral(node)
+		return &compilableAstWildcardCharacterLiteral
 	case ast.ModifierExpression:
 		compilableAstModifierExpression := CompilableAstModifierExpression(node)
 		return &compilableAstModifierExpression
