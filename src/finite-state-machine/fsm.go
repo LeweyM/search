@@ -10,6 +10,8 @@ const (
 
 type Predicate func(input rune) bool
 
+type destination *State
+
 type Transition struct {
 	// to: a pointer to the next state
 	to destination
@@ -20,12 +22,10 @@ type Transition struct {
 }
 
 type State struct {
-	empty        bool
+	empty       bool // this is a vestige of what should be a 'placeholder' node from the compiler.
 	id          int
 	transitions []Transition
 }
-
-type destination *State
 
 func (s *State) matchingTransitions(input rune) []destination {
 	var matchingTransitions []destination
