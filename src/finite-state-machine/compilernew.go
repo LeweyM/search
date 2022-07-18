@@ -95,31 +95,22 @@ func (m *CompilableAstModifierExpression) compile() (*State, *State) {
 getCompilableAst is a factory method for transforming compilable version of ASTs.
 */
 func getCompilableAst(a ast.Ast) compilableAst {
-	group, ok := a.(*ast.Group)
-	if ok {
-		compilableAstGroupNode := CompilableAstGroupNode(*group)
+	switch node := a.(type) {
+	case *ast.Group:
+		compilableAstGroupNode := CompilableAstGroupNode(*node)
 		return &compilableAstGroupNode
-	}
-
-	characterLiteral, ok := a.(ast.CharacterLiteral)
-	if ok {
-		compilableAstCharacterLiteral := CompilableAstCharacterLiteral(characterLiteral)
-		return &compilableAstCharacterLiteral
-	}
-
-	branch, ok := a.(*ast.Branch)
-	if ok {
-		compilableAstBranchNode := CompilableAstBranchNode(*branch)
+	case *ast.Branch:
+		compilableAstBranchNode := CompilableAstBranchNode(*node)
 		return &compilableAstBranchNode
-	}
-
-	modifier, ok := a.(ast.ModifierExpression)
-	if ok {
-		compilableAstModifierExpression := CompilableAstModifierExpression(modifier)
+	case ast.CharacterLiteral:
+		compilableAstCharacterLiteral := CompilableAstCharacterLiteral(node)
+		return &compilableAstCharacterLiteral
+	case ast.ModifierExpression:
+		compilableAstModifierExpression := CompilableAstModifierExpression(node)
 		return &compilableAstModifierExpression
+	default:
+		panic(fmt.Sprintf("expression of type [%s] cannot be compiled. Implementation missing.", reflect.TypeOf(a)))
 	}
-
-	panic(fmt.Sprintf("expression of type [%s] cannot be compiled. Implementation missing.", reflect.TypeOf(a)))
 }
 
 func (s *State) addEpsilonTransition(destination *State) {
