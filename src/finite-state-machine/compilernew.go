@@ -35,13 +35,7 @@ func (c *CompilableAstCharacterLiteral) compile() (head *State, tail *State) {
 	startingState := State{}
 	endState := State{}
 
-	transition := Transition{
-		to:          &endState,
-		predicate:   func(input rune) bool { return input == c.Character },
-		description: fmt.Sprintf("-- %s -->", string(c.Character)),
-	}
-
-	startingState.transitions = append(startingState.transitions, transition)
+	startingState.addTransition(&endState, func(input rune) bool { return input == c.Character })
 	return &startingState, &endState
 }
 
@@ -50,13 +44,7 @@ func (c CompilableAstWildcardCharacterLiteral) compile() (head *State, tail *Sta
 	startingState := State{}
 	endState := State{}
 
-	transition := Transition{
-		to:          &endState,
-		predicate:   func(input rune) bool { return true },
-		description: fmt.Sprintf("-- . -->"),
-	}
-
-	startingState.transitions = append(startingState.transitions, transition)
+	startingState.addTransition(&endState, func(input rune) bool { return true })
 	return &startingState, &endState
 }
 
