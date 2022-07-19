@@ -22,7 +22,6 @@ type Transition struct {
 }
 
 type State struct {
-	empty       bool // this is a vestige of what should be a 'placeholder' node from the compiler.
 	id          int
 	transitions []Transition
 }
@@ -40,21 +39,12 @@ func (s *State) matchingTransitions(input rune) []destination {
 func (s *State) isSuccessState() bool {
 	if len(s.transitions) == 0 {
 		return true
-	} else {
-		// not efficient
-		for _, linked := range s.transitions {
-			if linked.to.empty {
-				return true
-			}
-		}
-		return false
 	}
+
+	return false
 }
 
 func (s *State) merge(s2 *State) {
-	if s2.transitions[0].to.empty {
-		s2.transitions = s2.transitions[1:]
-	}
 	for _, t := range s2.transitions {
 		// when composing a transition, we merge the first transitions of the new state into the transition of the from state
 		s.transitions = append(s.transitions, t)

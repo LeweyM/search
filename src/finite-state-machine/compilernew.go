@@ -16,6 +16,13 @@ type CompilableAstWildcardCharacterLiteral ast.WildcardCharacterLiteral
 type CompilableAstBranchNode ast.Branch
 type CompilableAstModifierExpression ast.ModifierExpression
 
+// used to link together legacy code
+func Compile(input string) *State {
+	p := ast.Parser{}
+	tree := p.Parse(input)
+	return CompileNEW(tree)
+}
+
 func CompileNEW(a ast.Ast) *State {
 	d := getCompilableAst(a)
 
