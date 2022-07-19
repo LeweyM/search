@@ -1,6 +1,8 @@
 package finite_state_machine
 
-type branchSet struct{ set map[*State]bool }
+type branchSet struct {
+	set map[*State]bool
+}
 
 func newBranchSet() *branchSet {
 	return &branchSet{set: make(map[*State]bool)}

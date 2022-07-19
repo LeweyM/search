@@ -62,15 +62,12 @@ func (r *runner) processEpsilons() {
 func (r *runner) stepEpsilons() (hasEpsilonAdvanced bool) {
 	nextBranches := newBranchSet()
 	for br := range r.branches.set {
-		for _, t := range br.transitions {
-			// if a branch contains an epsilon transition
-			if t.epsilon {
-				// and the destination has not yet been accounted for
-				if !r.branches.contains(t.to) {
-					// add its destination branches to the branch set
-					nextBranches.add(t.to)
-					hasEpsilonAdvanced = true
-				}
+		for _, t := range br.epsilons {
+			// if the destination has not yet been accounted for
+			if !r.branches.contains(t.to) {
+				// add its destination branches to the branch set
+				nextBranches.add(t.to)
+				hasEpsilonAdvanced = true
 			}
 		}
 		// then add the branch

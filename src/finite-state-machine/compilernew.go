@@ -138,7 +138,3 @@ func getCompilableAst(a ast.Ast) compilableAst {
 		panic(fmt.Sprintf("expression of type [%s] cannot be compiled. Implementation missing.", reflect.TypeOf(a)))
 	}
 }
-
-func (s *State) addEpsilonTransition(destination *State) {
-	s.transitions = append(s.transitions, Transition{to: destination, predicate: func(r rune) bool { return true }, description: "epsilon", epsilon: true})
-}

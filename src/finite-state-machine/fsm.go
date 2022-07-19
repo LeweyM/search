@@ -18,35 +18,48 @@ type Transition struct {
 	// predicate: a function to determine if the runner should move to the next state
 	predicate   Predicate
 	description string
-	epsilon     bool
 }
 
 type State struct {
 	id          int
 	transitions []Transition
+	epsilons    []Transition
+	incoming    []Transition
 }
 
 func (s *State) matchingTransitions(input rune) []destination {
 	var matchingTransitions []destination
 	for _, t := range s.transitions {
-		if t.predicate != nil && t.predicate(input) && !t.epsilon { // TODO: clean up epsilon check here
+		if t.predicate(input) {
 			matchingTransitions = append(matchingTransitions, t.to)
 		}
 	}
+
 	return matchingTransitions
 }
 
 func (s *State) isSuccessState() bool {
-	if len(s.transitions) == 0 {
+	if len(s.transitions) == 0 && len(s.epsilons) == 0 {
 		return true
 	}
 
 	return false
 }
 
-func (s *State) merge(s2 *State) {
-	for _, t := range s2.transitions {
-		// when composing a transition, we merge the first transitions of the new state into the transition of the from state
-		s.transitions = append(s.transitions, t)
+func (s *State) addTransition(destination *State, predicate Predicate) {
+	t := Transition{
+		to:        destination,
+		predicate: predicate,
 	}
+	s.transitions = append(s.transitions, t)
+	destination.incoming = append(destination.incoming, t)
+}
+
+func (s *State) addEpsilonTransition(destination *State) {
+	t := Transition{
+		to:          destination,
+		description: "epsilon",
+	}
+	s.epsilons = append(s.epsilons, t)
+	destination.incoming = append(destination.incoming, t)
 }
