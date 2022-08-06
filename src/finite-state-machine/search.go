@@ -7,7 +7,7 @@ type Result struct {
 }
 
 type Machine interface {
-	Next(input rune) StateType
+	Next(input rune) Status
 	Reset()
 }
 

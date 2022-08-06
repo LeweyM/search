@@ -1,11 +1,11 @@
 package finite_state_machine
 
-type StateType int
+type Status string
 
 const (
-	Success StateType = iota
-	Fail
-	Normal
+	Success Status = "success"
+	Fail           = "fail"
+	Normal         = "normal"
 )
 
 type Predicate func(input rune) bool
@@ -24,7 +24,6 @@ type State struct {
 	id          int
 	transitions []Transition
 	epsilons    []Transition
-	incoming    []Transition
 }
 
 func (s *State) matchingTransitions(input rune) []destination {
@@ -52,7 +51,6 @@ func (s *State) addTransition(destination *State, predicate Predicate) {
 		predicate: predicate,
 	}
 	s.transitions = append(s.transitions, t)
-	destination.incoming = append(destination.incoming, t)
 }
 
 func (s *State) addEpsilonTransition(destination *State) {
@@ -61,5 +59,37 @@ func (s *State) addEpsilonTransition(destination *State) {
 		description: "epsilon",
 	}
 	s.epsilons = append(s.epsilons, t)
-	destination.incoming = append(destination.incoming, t)
+}
+
+/*
+	-->(s)   (s2)-->(3)
+becomes
+	-->(s)-->(3)
+	(s2)
+
+note: this does not account for incoming transitions to (s2), these will
+still point to s2 if they exist.
+
+this should only be used when (s2) has no incoming transitions
+*/
+func (s *State) merge(s2 *State) {
+	s2.checkHasNoIncomingTransitions(s2)
+
+	for _, t := range s2.transitions {
+		s.addTransition(t.to, t.predicate)
+	}
+
+	for _, t := range s2.epsilons {
+		s.addEpsilonTransition(t.to)
+	}
+}
+
+func (s *State) checkHasNoIncomingTransitions(target *State) {
+	for _, t := range append(s.transitions, s.epsilons...) {
+		if t.to == target {
+			panic("state should have no incoming transitions")
+		}
+
+		(*State)(t.to).checkHasNoIncomingTransitions(target)
+	}
 }

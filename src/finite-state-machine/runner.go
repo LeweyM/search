@@ -9,14 +9,16 @@ type runner struct {
 func NewRunner(head *State) *runner {
 	failState := &State{id: 0}
 
-	return &runner{
+	r := &runner{
 		failState: failState,
 		head:      head,
 		branches:  newBranchSet(),
 	}
+	r.Reset()
+	return r
 }
 
-func (r *runner) Next(input rune) StateType {
+func (r *runner) Next(input rune) Status {
 	// move along epsilon transitions first.
 	// This is probably inefficient and could be moved into the main loop.
 	r.processEpsilons()
@@ -36,7 +38,7 @@ func (r *runner) Next(input rune) StateType {
 	return r.getTotalState()
 }
 
-func (r *runner) getTotalState() StateType {
+func (r *runner) getTotalState() Status {
 	// if all branches have failed, return Fail
 	if len(r.branches.set) == 0 {
 		return Fail
