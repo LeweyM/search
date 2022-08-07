@@ -34,7 +34,7 @@ func TestHandmadeFSM(t *testing.T) {
 
 	tests := []test{
 		{"empty string", "", Normal},
-		{"non matching string", "x", Fail},
+		{"non matching string", "xxx", Fail},
 		{"matching string", "abc", Success},
 		{"partial matching string", "ab", Normal},
 	}
