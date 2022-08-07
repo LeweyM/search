@@ -15,7 +15,11 @@ func NewRunner(head *State) *runner {
 }
 
 func (r *runner) Next(input rune) {
-	// move along transitions
+	if r.current == nil {
+		return
+	}
+
+	// move to next matching transition
 	r.current = r.current.firstMatchingTransition(input)
 }
 
