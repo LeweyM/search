@@ -1,9 +1,9 @@
 package v2
 
-type SymbolType int
+type symbol int
 
 const (
-	AnyCharacter SymbolType = iota
+	AnyCharacter symbol = iota
 	Pipe
 	LParen
 	RParen
@@ -14,39 +14,39 @@ const (
 )
 
 type token struct {
-	symbolType SymbolType
-	letter     rune
+	symbol symbol
+	letter rune
 }
 
 func lex(input string) []token {
-	var symbols []token
+	var tokens []token
 	i := 0
 	for i < len(input) {
-		symbols = append(symbols, lexRune(rune(input[i])))
+		tokens = append(tokens, lexRune(rune(input[i])))
 		i++
 	}
-	return symbols
+	return tokens
 }
 
 func lexRune(r rune) token {
 	var s token
 	switch r {
 	case '(':
-		s.symbolType = LParen
+		s.symbol = LParen
 	case ')':
-		s.symbolType = RParen
+		s.symbol = RParen
 	case '.':
-		s.symbolType = AnyCharacter
+		s.symbol = AnyCharacter
 	case '|':
-		s.symbolType = Pipe
+		s.symbol = Pipe
 	case '*':
-		s.symbolType = ZeroOrMore
+		s.symbol = ZeroOrMore
 	case '+':
-		s.symbolType = OneOrMore
+		s.symbol = OneOrMore
 	case '?':
-		s.symbolType = ZeroOrOne
+		s.symbol = ZeroOrOne
 	default:
-		s.symbolType = Character
+		s.symbol = Character
 		s.letter = r
 	}
 	return s

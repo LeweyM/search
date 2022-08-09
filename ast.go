@@ -1,52 +1,45 @@
 package v2
 
-import (
-	"fmt"
-	"strings"
-)
-
-const indentationFormat = "----"
-
-type Ast interface {
-	string(indent int) string
-}
-
 type Node interface {
-	Append(Ast)
-	string(indent int) string
+	compile() (head *State, tail *State)
 }
 
-type Modifier int
+type CompositeNode interface {
+	Node
+	Append(node Node)
+}
 
 type Group struct {
-	Expressions []Ast
-}
-
-func (g *Group) Append(ast Ast) {
-	g.Expressions = append(g.Expressions, ast)
-}
-
-func (g *Group) String() string {
-	return g.string(0)
-}
-
-func (g *Group) string(indent int) string {
-	children := []string{}
-	for _, child := range g.Expressions {
-		children = append(children, child.string(indent+1))
-	}
-
-	indentation := strings.Repeat(indentationFormat, indent)
-
-	return fmt.Sprintf("\n%sGroup {%+v\n%s}", indentation, children, indentation)
+	ChildNodes []Node
 }
 
 type CharacterLiteral struct {
 	Character rune
 }
 
-func (c CharacterLiteral) string(indent int) string {
-	indentation := strings.Repeat(indentationFormat, indent)
+func (g *Group) Append(node Node) {
+	g.ChildNodes = append(g.ChildNodes, node)
+}
 
-	return fmt.Sprintf("\n%sLiteral {%s}\n%s", indentation, string(c.Character), indentation)
+/* Compiler methods */
+
+func (g *Group) compile() (head *State, tail *State) {
+	startState := State{}
+	currentTail := &startState
+
+	for _, expression := range g.ChildNodes {
+		nextStateHead, nextStateTail := expression.compile()
+		currentTail.merge(nextStateHead)
+		currentTail = nextStateTail
+	}
+
+	return &startState, currentTail
+}
+
+func (l CharacterLiteral) compile() (head *State, tail *State) {
+	startingState := State{}
+	endState := State{}
+
+	startingState.addTransition(&endState, func(input rune) bool { return input == l.Character })
+	return &startingState, &endState
 }

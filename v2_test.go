@@ -4,33 +4,12 @@ import (
 	"testing"
 )
 
-func TestHandmadeFSM(t *testing.T) {
-	// handMade
-	startState := State{}
-	stateA := State{}
-	stateB := State{}
-	stateC := State{}
-
-	startState.transitions = append(startState.transitions, Transition{
-		to:        &stateA,
-		predicate: func(input rune) bool { return input == 'a' },
-	})
-
-	stateA.transitions = append(stateA.transitions, Transition{
-		to:        &stateB,
-		predicate: func(input rune) bool { return input == 'b' },
-	})
-
-	stateB.transitions = append(stateB.transitions, Transition{
-		to:        &stateC,
-		predicate: func(input rune) bool { return input == 'c' },
-	})
-
+func TestCompiledFSM(t *testing.T) {
 	parser := NewParser()
 
 	tokens := lex("abc")
 	ast := parser.Parse(tokens)
-	fsm := Compile(ast)
+	startState, _ := ast.compile()
 
 	type test struct {
 		name           string
@@ -47,7 +26,7 @@ func TestHandmadeFSM(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			testRunner := NewRunner(fsm)
+			testRunner := NewRunner(startState)
 
 			for _, character := range tt.input {
 				testRunner.Next(character)

@@ -8,12 +8,12 @@ import (
 func TestParser(t *testing.T) {
 	type test struct {
 		name, input    string
-		expectedResult Ast
+		expectedResult Node
 	}
 
 	tests := []test{
 		{name: "simple string", input: "aBc", expectedResult: &Group{
-			Expressions: []Ast{
+			ChildNodes: []Node{
 				CharacterLiteral{Character: 'a'},
 				CharacterLiteral{Character: 'B'},
 				CharacterLiteral{Character: 'c'},

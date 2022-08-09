@@ -1,46 +1,20 @@
 package v2
 
-type stackLine struct {
-	tail, head Node
-}
-
-type Parser struct {
-	stack []stackLine
-}
+type Parser struct{}
 
 func NewParser() *Parser {
-	return &Parser{stack: []stackLine{}}
+	return &Parser{}
 }
 
-func (p *Parser) Parse(tokens []token) Ast {
-	p.pushNewGroup()
+func (p *Parser) Parse(tokens []token) Node {
+	group := Group{}
 
 	for _, t := range tokens {
-		switch t.symbolType {
+		switch t.symbol {
 		case Character:
-			node := p.pop()
-			node.tail.Append(CharacterLiteral{Character: t.letter})
-			p.push(node)
+			group.Append(CharacterLiteral{Character: t.letter})
 		}
 	}
 
-	return p.pop().head
-}
-
-func (p *Parser) pushNewGroup() {
-	newGroup := Group{}
-	p.push(stackLine{
-		tail: &newGroup,
-		head: &newGroup,
-	})
-}
-func (p *Parser) pop() stackLine {
-	pop := p.stack[len(p.stack)-1]
-	p.stack = p.stack[:len(p.stack)-1]
-
-	return pop
-}
-
-func (p *Parser) push(g stackLine) {
-	p.stack = append(p.stack, g)
+	return &group
 }
