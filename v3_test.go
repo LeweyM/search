@@ -81,7 +81,7 @@ func TestFSMAgainstGoRegexPkg(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			result := matchRegex(tt.regex, tt.input)
+			result := NewMyRegex(tt.regex).MatchString(tt.input)
 
 			goRegexMatch := regexp.MustCompile(tt.regex).MatchString(tt.input)
 
@@ -116,7 +116,7 @@ func FuzzFSM(f *testing.F) {
 			t.Skip()
 		}
 
-		result := matchRegex(regex, input)
+		result := NewMyRegex(regex).MatchString(input)
 		goRegexMatch := compiledGoRegex.MatchString(input)
 
 		if result != goRegexMatch {
@@ -130,33 +130,4 @@ func FuzzFSM(f *testing.F) {
 				result)
 		}
 	})
-}
-
-func matchRegex(regex, input string) bool {
-	parser := NewParser()
-	tokens := lex(regex)
-	ast := parser.Parse(tokens)
-	startState, _ := ast.compile()
-	testRunner := NewRunner(startState)
-
-	return match(testRunner, []rune(input))
-}
-
-func match(runner *runner, input []rune) bool {
-	runner.Reset()
-
-	for _, character := range input {
-		runner.Next(character)
-		status := runner.GetStatus()
-
-		if status == Fail {
-			return match(runner, input[1:])
-		}
-
-		if status == Success {
-			return true
-		}
-	}
-
-	return runner.GetStatus() == Success
 }
