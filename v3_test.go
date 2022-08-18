@@ -64,11 +64,19 @@ func TestFSMAgainstGoRegexPkg(t *testing.T) {
 
 	tests := []test{
 		{"empty string", "abc", ""},
+		{"empty regex", "", "abc"},
 		{"non matching string", "abc", "xxx"},
 		{"matching string", "abc", "abc"},
 		{"partial matching string", "abc", "ab"},
-
 		{"nested expressions", "a(b(d))c", "abdc"},
+		{"substring match with reset needed", "aA", "aaA"},
+		{"substring match without reset needed", "B", "ABA"},
+		{"multibyte characters", "Ȥ", "Ȥ"},
+		{
+			"complex multibyte characters",
+			string([]byte{0xef, 0xbf, 0xbd, 0x30}),
+			string([]byte{0xcc, 0x87, 0x30}),
+		},
 	}
 
 	for _, tt := range tests {
@@ -77,8 +85,16 @@ func TestFSMAgainstGoRegexPkg(t *testing.T) {
 
 			goRegexMatch := regexp.MustCompile(tt.regex).MatchString(tt.input)
 
-			if (result == Success && !goRegexMatch) || (result != Success && goRegexMatch) {
-				t.Fatalf("Mismatch - Regex: '%s', Input: '%s' -> Go Regex Pkg: '%t', Our regex result: '%v'", tt.regex, tt.input, goRegexMatch, result)
+			if result != goRegexMatch {
+				t.Fatalf(
+					"Mismatch - \nRegex: '%s' (as bytes: %x), \nInput: '%s' (as bytes: %x) \n-> \nGo Regex Pkg: '%t', \nOur regex result: '%v'",
+					tt.regex,
+					[]byte(tt.regex),
+					tt.input,
+					[]byte(tt.input),
+					goRegexMatch,
+					result,
+				)
 			}
 		})
 	}
@@ -91,11 +107,7 @@ func FuzzFSM(f *testing.F) {
 	f.Add("ca(t)(s)", "dog")
 
 	f.Fuzz(func(t *testing.T, regex, input string) {
-		if strings.ContainsAny(input, "Ȥ") {
-			t.Skip()
-		}
-
-		if strings.ContainsAny(regex, "$^|*+?.\\") {
+		if strings.ContainsAny(regex, "[]{}$^|*+?.\\") {
 			t.Skip()
 		}
 
@@ -107,31 +119,44 @@ func FuzzFSM(f *testing.F) {
 		result := matchRegex(regex, input)
 		goRegexMatch := compiledGoRegex.MatchString(input)
 
-		if (result == Success && !goRegexMatch) || (result == Fail && goRegexMatch) {
-			t.Fatalf("Mismatch - Regex: '%s', Input: '%s' -> Go Regex Pkg: '%t', Our regex result: '%v'", regex, input, goRegexMatch, result)
+		if result != goRegexMatch {
+			t.Fatalf(
+				"Mismatch - \nRegex: '%s' (as bytes: %x), \nInput: '%s' (as bytes: %x) \n-> \nGo Regex Pkg: '%t', \nOur regex result: '%v'",
+				regex,
+				[]byte(regex),
+				input,
+				[]byte(input),
+				goRegexMatch,
+				result)
 		}
 	})
 }
 
-func matchRegex(regex, input string) Status {
+func matchRegex(regex, input string) bool {
 	parser := NewParser()
 	tokens := lex(regex)
 	ast := parser.Parse(tokens)
 	startState, _ := ast.compile()
 	testRunner := NewRunner(startState)
 
+	return match(testRunner, []rune(input))
+}
+
+func match(runner *runner, input []rune) bool {
+	runner.Reset()
+
 	for _, character := range input {
-		testRunner.Next(character)
-		status := testRunner.GetStatus()
+		runner.Next(character)
+		status := runner.GetStatus()
+
 		if status == Fail {
-			testRunner.Reset()
-			continue
+			return match(runner, input[1:])
 		}
 
-		if status != Normal {
-			return status
+		if status == Success {
+			return true
 		}
 	}
 
-	return testRunner.GetStatus()
+	return runner.GetStatus() == Success
 }
