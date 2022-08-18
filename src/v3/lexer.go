@@ -18,15 +18,25 @@ type token struct {
 	letter rune
 }
 
+// changed to support multibyte chars
 func lex(input string) []token {
 	var tokens []token
-	i := 0
-	for i < len(input) {
-		tokens = append(tokens, lexRune(rune(input[i])))
-		i++
+	for _, character := range input {
+		tokens = append(tokens, lexRune(character))
 	}
 	return tokens
 }
+
+//
+//func lex(input string) []token {
+//	var tokens []token
+//	i := 0
+//	for i < len(input) {
+//		tokens = append(tokens, lexRune(rune(input[i])))
+//		i++
+//	}
+//	return tokens
+//}
 
 func lexRune(r rune) token {
 	var s token
