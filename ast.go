@@ -50,6 +50,6 @@ func (w WildcardLiteral) compile() (head *State, tail *State) {
 	startingState := State{}
 	endState := State{}
 
-	startingState.addTransition(&endState, func(input rune) bool { return true })
+	startingState.addTransition(&endState, func(input rune) bool { return input != '\n' })
 	return &startingState, &endState
 }

@@ -80,6 +80,7 @@ func TestFSMAgainstGoRegexPkg(t *testing.T) {
 		// wildcard
 		{"wildcard regex matching", "ab.", "abc"},
 		{"wildcard regex not matching", "ab.", "ab"},
+		{"wildcards matching newlines", "..0", "0\n0"},
 	}
 
 	for _, tt := range tests {
