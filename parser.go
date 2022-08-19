@@ -17,6 +17,10 @@ func (p *Parser) Parse(tokens []token) Node {
 			node := p.pop()
 			node.Append(CharacterLiteral{Character: t.letter})
 			p.push(node)
+		case AnyCharacter:
+			node := p.pop()
+			node.Append(WildcardLiteral{})
+			p.push(node)
 		}
 	}
 
@@ -26,6 +30,7 @@ func (p *Parser) Parse(tokens []token) Node {
 func (p *Parser) pushNewGroup() {
 	p.push(&Group{})
 }
+
 func (p *Parser) pop() CompositeNode {
 	pop := p.fsmStack[len(p.fsmStack)-1]
 	p.fsmStack = p.fsmStack[:len(p.fsmStack)-1]

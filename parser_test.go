@@ -19,6 +19,13 @@ func TestParser(t *testing.T) {
 				CharacterLiteral{Character: 'c'},
 			},
 		}},
+		{name: "wildcard character", input: "ab.", expectedResult: &Group{
+			ChildNodes: []Node{
+				CharacterLiteral{Character: 'a'},
+				CharacterLiteral{Character: 'b'},
+				WildcardLiteral{},
+			},
+		}},
 	}
 
 	for _, tt := range tests {
