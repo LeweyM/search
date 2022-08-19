@@ -77,6 +77,9 @@ func TestFSMAgainstGoRegexPkg(t *testing.T) {
 			string([]byte{0xef, 0xbf, 0xbd, 0x30}),
 			string([]byte{0xcc, 0x87, 0x30}),
 		},
+		// wildcard
+		{"wildcard regex matching", "ab.", "abc"},
+		{"wildcard regex not matching", "ab.", "ab"},
 	}
 
 	for _, tt := range tests {
@@ -107,7 +110,7 @@ func FuzzFSM(f *testing.F) {
 	f.Add("ca(t)(s)", "dog")
 
 	f.Fuzz(func(t *testing.T, regex, input string) {
-		if strings.ContainsAny(regex, "[]{}$^|*+?.\\") {
+		if strings.ContainsAny(regex, "[]{}$^|*+?\\") {
 			t.Skip()
 		}
 
