@@ -17,6 +17,10 @@ func (m *myRegex) MatchString(input string) bool {
 	return match(testRunner, []rune(input))
 }
 
+func (m *myRegex) Debug() string {
+	return m.fsm.Draw()
+}
+
 func match(runner *runner, input []rune) bool {
 	runner.Reset()
 
