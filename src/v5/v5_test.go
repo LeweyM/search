@@ -85,9 +85,11 @@ func TestFSMAgainstGoRegexPkg(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			result := NewMyRegex(tt.regex).MatchString(tt.input)
+			myRegex := NewMyRegex(tt.regex)
+			result := myRegex.MatchString(tt.input)
 
 			goRegexMatch := regexp.MustCompile(tt.regex).MatchString(tt.input)
+			t.Logf("Compiled state machine:\n%v\n", myRegex.Debug())
 
 			if result != goRegexMatch {
 				t.Fatalf(
