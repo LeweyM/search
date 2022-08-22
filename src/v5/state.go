@@ -15,6 +15,7 @@ type Predicate func(input rune) bool
 type destination *State
 
 type Transition struct {
+	debugSymbol string
 	// to: a pointer to the next state
 	to destination
 	// predicate: a function to determine if the runner should move to the next state
@@ -46,10 +47,11 @@ func (s *State) isSuccessState() bool {
 }
 
 // helper function to add a transition to State.
-func (s *State) addTransition(destination *State, predicate Predicate) {
+func (s *State) addTransition(destination *State, predicate Predicate, debugSymbol string) {
 	t := Transition{
-		to:        destination,
-		predicate: predicate,
+		debugSymbol: debugSymbol,
+		to:          destination,
+		predicate:   predicate,
 	}
 	s.transitions = append(s.transitions, t)
 	destination.incoming = append(destination.incoming, s)
@@ -64,6 +66,6 @@ func (s *State) merge(s2 *State) {
 	}
 
 	for _, t := range s2.transitions {
-		s.addTransition(t.to, t.predicate)
+		s.addTransition(t.to, t.predicate, t.debugSymbol)
 	}
 }
