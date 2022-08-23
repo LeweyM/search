@@ -70,5 +70,17 @@ func (s *State) merge(s2 *State) {
 
 	for _, t := range s2.transitions {
 		s.addTransition(t.to, t.predicate, t.debugSymbol)
+
+		// remove where t.to.incoming = s2
+		t.to.incoming = filterState(t.to.incoming, s2)
 	}
+}
+
+func filterState(states []*State, s2 *State) []*State {
+	for i, state := range states {
+		if s2 == state {
+			return append(states[:i], states[i+1:]...)
+		}
+	}
+	return states
 }
