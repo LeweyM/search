@@ -19,13 +19,13 @@ type destination *State
 type Transition struct {
 	debugSymbol string
 	// to: a pointer to the next state
-	to destination
+	to   destination
+	from destination
 	// predicate: a function to determine if the runner should move to the next state
 	predicate Predicate
 }
 
 type State struct {
-	id          int
 	transitions []Transition
 	incoming    []*State
 }
@@ -53,6 +53,7 @@ func (s *State) addTransition(destination *State, predicate Predicate, debugSymb
 	t := Transition{
 		debugSymbol: debugSymbol,
 		to:          destination,
+		from:        s,
 		predicate:   predicate,
 	}
 	s.transitions = append(s.transitions, t)
