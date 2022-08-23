@@ -8,6 +8,7 @@ import (
 	"search/src/screen"
 	"search/src/search"
 	"search/src/trigram"
+	v5 "search/src/v5"
 	"sort"
 	"strconv"
 	"strings"
@@ -17,6 +18,12 @@ const RedAnsi = "\u001b[31m"
 const ResetAnsi = "\u001b[0m"
 
 func main() {
+	switch os.Args[1] {
+	case "v5":
+		v5.Main()
+		return
+	}
+
 	input := make(chan string)
 	inputOutput := os.Stdin
 	sc := screen.NewScreen(os.Stdout, input)
