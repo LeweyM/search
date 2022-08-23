@@ -6,57 +6,54 @@ import (
 )
 
 func (s *State) Draw() string {
-	res := []string{
+	sm := StateIDMap{}
+
+	// collect transitions
+	transitionSet := TransitionSet{}
+	visitNodes(s, &transitionSet, make(map[*State]bool))
+
+	output := []string{
 		"graph LR",
 	}
 
-	stateMap := StateMap{}
-	for _, transition := range s.transitions {
-		res = append(res, drawVertex(TransitionSet{}, stateMap, transition)...)
+	// draw transitions
+	for _, t := range transitionSet.list() {
+		fromId := sm.getId(t.from)
+		toId := sm.getId(t.to)
+		output = append(output, fmt.Sprintf("%d((%d)) --\"%s\"--> %d((%d))", fromId, fromId, t.debugSymbol, toId, toId))
 	}
-
-	return strings.Join(res, "\n")
+	return strings.Join(output, "\n")
 }
 
-func drawVertex(visited TransitionSet, sm StateMap, t Transition) []string {
-	res := []string{}
-
-	if visited.has(t) {
-		return res
+func visitNodes(node *State, transitions *TransitionSet, visited map[*State]bool) {
+	// if already visited the node, return
+	if visited[node] {
+		return
 	}
 
-	toVisit := []Transition{}
-	for _, transition := range t.to.transitions {
-		toVisit = append(toVisit, transition)
-	}
-	for _, incoming := range t.to.incoming {
-		for _, transition := range incoming.transitions {
-			toVisit = append(toVisit, transition)
-		}
+	// add transitions from node
+	for _, transition := range node.transitions {
+		transitions.set(transition)
 	}
 
-	// add the transition to the list
-	fromId := sm.getId(t.from)
-	toId := sm.getId(t.to)
-	res = append(res, fmt.Sprintf("%d((%d)) --\"%s\"--> %d((%d))", fromId, fromId, t.debugSymbol, toId, toId))
+	visited[node] = true
 
-	visited.set(t)
-
-	// recursively add all the transitions from the child nodes and flatten the list
-	for _, transition := range toVisit {
-		res = append(res, drawVertex(visited, sm, transition)...)
+	// visit all neighbours
+	for _, transition := range node.transitions {
+		visitNodes(transition.to, transitions, visited)
 	}
-
-	return res
+	for _, incomingNode := range node.incoming {
+		visitNodes(incomingNode, transitions, visited)
+	}
 }
 
-// StateMap is used to cache ids for States
-type StateMap struct {
+// StateIDMap is used to cache ids for States
+type StateIDMap struct {
 	nextId   int
 	stateMap map[*State]int
 }
 
-func (sm *StateMap) has(state *State) bool {
+func (sm *StateIDMap) has(state *State) bool {
 	if sm.stateMap == nil {
 		return false
 	}
@@ -66,7 +63,7 @@ func (sm *StateMap) has(state *State) bool {
 }
 
 // getId will return an incrementing numerical id for each state
-func (sm *StateMap) getId(state *State) int {
+func (sm *StateIDMap) getId(state *State) int {
 	// initialize map
 	if sm.stateMap == nil {
 		sm.stateMap = make(map[*State]int)
@@ -85,26 +82,28 @@ func (sm *StateMap) getId(state *State) int {
 	return id
 }
 
-type comparableTransition struct {
-	symbol string
-	to     destination
-	from   destination
+// TransitionSet maintains an ordered set of unique Transitions
+type TransitionSet struct {
+	transitionSet  map[Transition]bool
+	transitionList []Transition
 }
 
-type TransitionSet map[comparableTransition]bool
+func (ts *TransitionSet) set(t Transition) {
+	hasTransition := ts.transitionSet[t]
 
-func (ts *TransitionSet) set(transition Transition) {
-	(*ts)[comparableTransition{
-		symbol: transition.debugSymbol,
-		to:     transition.to,
-		from:   transition.from,
-	}] = true
+	if !hasTransition {
+		if ts.transitionSet == nil {
+			ts.transitionSet = make(map[Transition]bool)
+		}
+		ts.transitionSet[t] = true
+		ts.transitionList = append(ts.transitionList, t)
+	}
 }
 
-func (ts *TransitionSet) has(transition Transition) bool {
-	return (*ts)[comparableTransition{
-		symbol: transition.debugSymbol,
-		from:   transition.from,
-		to:     transition.to,
-	}]
+func (ts *TransitionSet) has(t Transition) bool {
+	return ts.transitionSet[t]
+}
+
+func (ts *TransitionSet) list() []Transition {
+	return ts.transitionList[:]
 }
