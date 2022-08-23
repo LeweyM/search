@@ -10,7 +10,9 @@ const (
 	Normal         = "normal"
 )
 
-type Predicate func(input rune) bool
+type Predicate interface {
+	test(input rune) bool
+}
 
 type destination *State
 
@@ -30,7 +32,7 @@ type State struct {
 
 func (s *State) firstMatchingTransition(input rune) destination {
 	for _, t := range s.transitions {
-		if t.predicate(input) {
+		if t.predicate.test(input) {
 			return t.to
 		}
 	}
