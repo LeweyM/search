@@ -11,23 +11,40 @@ func (s *State) Draw() string {
 	}
 
 	stateMap := StateMap{}
-	res = append(res, draw(stateMap, s)...)
+	for _, transition := range s.transitions {
+		res = append(res, drawVertex(TransitionSet{}, stateMap, transition)...)
+	}
 
 	return strings.Join(res, "\n")
 }
 
-func draw(sm StateMap, s *State) []string {
+func drawVertex(visited TransitionSet, sm StateMap, t Transition) []string {
 	res := []string{}
 
-	currentId := sm.getId(s)
-	for _, transition := range s.transitions {
-		destinationId := sm.getId(transition.to)
+	if visited.has(t) {
+		return res
+	}
 
-		// add the transition to the list
-		res = append(res, fmt.Sprintf("%d((%d)) -- %s --> %d((%d))", currentId, currentId, transition.debugSymbol, destinationId, destinationId))
+	toVisit := []Transition{}
+	for _, transition := range t.to.transitions {
+		toVisit = append(toVisit, transition)
+	}
+	for _, incoming := range t.to.incoming {
+		for _, transition := range incoming.transitions {
+			toVisit = append(toVisit, transition)
+		}
+	}
 
-		// recursively add all the transitions from the child nodes and flatten the list
-		res = append(res, draw(sm, transition.to)...)
+	// add the transition to the list
+	fromId := sm.getId(t.from)
+	toId := sm.getId(t.to)
+	res = append(res, fmt.Sprintf("%d((%d)) --\"%s\"--> %d((%d))", fromId, fromId, t.debugSymbol, toId, toId))
+
+	visited.set(t)
+
+	// recursively add all the transitions from the child nodes and flatten the list
+	for _, transition := range toVisit {
+		res = append(res, drawVertex(visited, sm, transition)...)
 	}
 
 	return res
@@ -37,6 +54,15 @@ func draw(sm StateMap, s *State) []string {
 type StateMap struct {
 	nextId   int
 	stateMap map[*State]int
+}
+
+func (sm *StateMap) has(state *State) bool {
+	if sm.stateMap == nil {
+		return false
+	}
+
+	_, has := sm.stateMap[state]
+	return has
 }
 
 // getId will return an incrementing numerical id for each state
@@ -57,4 +83,28 @@ func (sm *StateMap) getId(state *State) int {
 
 	// else, just return the cached id
 	return id
+}
+
+type comparableTransition struct {
+	symbol string
+	to     destination
+	from   destination
+}
+
+type TransitionSet map[comparableTransition]bool
+
+func (ts *TransitionSet) set(transition Transition) {
+	(*ts)[comparableTransition{
+		symbol: transition.debugSymbol,
+		to:     transition.to,
+		from:   transition.from,
+	}] = true
+}
+
+func (ts *TransitionSet) has(transition Transition) bool {
+	return (*ts)[comparableTransition{
+		symbol: transition.debugSymbol,
+		from:   transition.from,
+		to:     transition.to,
+	}]
 }
