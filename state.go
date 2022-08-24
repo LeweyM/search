@@ -10,18 +10,13 @@ const (
 	Normal         = "normal"
 )
 
-type Predicate interface {
-	test(input rune) bool
-}
-
 type destination *State
 
 type Transition struct {
 	debugSymbol string
 	// to: a pointer to the next state
-	to   destination
-	from destination
-	// predicate: a function to determine if the runner should move to the next state
+	to        destination
+	from      destination
 	predicate Predicate
 }
 

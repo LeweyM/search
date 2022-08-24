@@ -6,11 +6,12 @@ import (
 )
 
 func (s *State) Draw() string {
-	sm := StateIDMap{}
+	// initialize sets
+	transitionSet := OrderedSet[Transition]{}
+	nodeSet := OrderedSet[*State]{}
 
 	// collect transitions
-	transitionSet := TransitionSet{}
-	visitNodes(s, &transitionSet, make(map[*State]bool))
+	visitNodes(s, &transitionSet, &nodeSet)
 
 	output := []string{
 		"graph LR",
@@ -18,92 +19,75 @@ func (s *State) Draw() string {
 
 	// draw transitions
 	for _, t := range transitionSet.list() {
-		fromId := sm.getId(t.from)
-		toId := sm.getId(t.to)
+		fromId := nodeSet.getIndex(t.from)
+		toId := nodeSet.getIndex(t.to)
 		output = append(output, fmt.Sprintf("%d((%d)) --\"%s\"--> %d((%d))", fromId, fromId, t.debugSymbol, toId, toId))
 	}
 	return strings.Join(output, "\n")
 }
 
-func visitNodes(node *State, transitions *TransitionSet, visited map[*State]bool) {
-	// if already visited the node, return
-	if visited[node] {
+func visitNodes(
+	node *State,
+	transitions *OrderedSet[Transition],
+	visited *OrderedSet[*State],
+) {
+	// 1. If the current node has already been visited, stop.
+	if visited.has(node) {
 		return
 	}
 
-	// add transitions from node
+	// 2. Add the transitions from this node to a set of transitions.
 	for _, transition := range node.transitions {
-		transitions.set(transition)
+		transitions.add(transition)
 	}
 
-	visited[node] = true
+	// 3. Mark the current node as visited.
+	visited.add(node)
 
-	// visit all neighbours
+	// 4. Recur on the destination node of every outgoing transition.
 	for _, transition := range node.transitions {
-		visitNodes(transition.to, transitions, visited)
+		destinationNode := transition.to
+		visitNodes(destinationNode, transitions, visited)
 	}
-	for _, incomingNode := range node.incoming {
-		visitNodes(incomingNode, transitions, visited)
-	}
-}
-
-// StateIDMap is used to cache ids for States
-type StateIDMap struct {
-	nextId   int
-	stateMap map[*State]int
-}
-
-func (sm *StateIDMap) has(state *State) bool {
-	if sm.stateMap == nil {
-		return false
-	}
-
-	_, has := sm.stateMap[state]
-	return has
-}
-
-// getId will return an incrementing numerical id for each state
-func (sm *StateIDMap) getId(state *State) int {
-	// initialize map
-	if sm.stateMap == nil {
-		sm.stateMap = make(map[*State]int)
-	}
-
-	id, inMap := sm.stateMap[state]
-	if !inMap {
-		// if state is not in the cache, store the state and increment the id
-		i := sm.nextId
-		sm.stateMap[state] = sm.nextId
-		sm.nextId++
-		return i
-	}
-
-	// else, just return the cached id
-	return id
-}
-
-// TransitionSet maintains an ordered set of unique Transitions
-type TransitionSet struct {
-	transitionSet  map[Transition]bool
-	transitionList []Transition
-}
-
-func (ts *TransitionSet) set(t Transition) {
-	hasTransition := ts.transitionSet[t]
-
-	if !hasTransition {
-		if ts.transitionSet == nil {
-			ts.transitionSet = make(map[Transition]bool)
-		}
-		ts.transitionSet[t] = true
-		ts.transitionList = append(ts.transitionList, t)
+	// 5. Recur on the source node of every incoming transition.
+	for _, sourceNode := range node.incoming {
+		visitNodes(sourceNode, transitions, visited)
 	}
 }
 
-func (ts *TransitionSet) has(t Transition) bool {
-	return ts.transitionSet[t]
+// OrderedSet maintains an ordered set of unique items of type <T>
+type OrderedSet[T comparable] struct {
+	set       map[T]int
+	nextIndex int
 }
 
-func (ts *TransitionSet) list() []Transition {
-	return ts.transitionList[:]
+func (o *OrderedSet[T]) add(t T) {
+	if o.set == nil {
+		o.set = make(map[T]int)
+	}
+
+	if !o.has(t) {
+		o.set[t] = o.nextIndex
+		o.nextIndex++
+	}
+}
+
+func (o *OrderedSet[T]) has(t T) bool {
+	_, hasItem := o.set[t]
+	return hasItem
+}
+
+func (o *OrderedSet[T]) list() []T {
+	size := len(o.set)
+	list := make([]T, size)
+
+	for t, i := range o.set {
+		list[i] = t
+	}
+
+	return list
+}
+
+func (o *OrderedSet[T]) getIndex(t T) int {
+	return o.set[t]
 }

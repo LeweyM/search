@@ -1,23 +1,24 @@
 package v5
 
-import "strings"
+import (
+	"strings"
+)
 
-// single character
-
-type SingleCharacterPredicate struct {
-	character rune
+type Predicate struct {
+	allowedChars    string
+	disallowedChars string
 }
 
-func (a SingleCharacterPredicate) test(input rune) bool {
-	return input == a.character
-}
+func (p Predicate) test(input rune) bool {
+	if p.allowedChars != "" && p.disallowedChars != "" {
+		panic("must be mutually exclusive")
+	}
 
-// disallow list
-
-type DisallowListPredicate struct {
-	disallowList string
-}
-
-func (d DisallowListPredicate) test(input rune) bool {
-	return !strings.ContainsRune(d.disallowList, input)
+	if len(p.allowedChars) > 0 {
+		return strings.ContainsRune(p.allowedChars, input)
+	}
+	if len(p.disallowedChars) > 0 {
+		return !strings.ContainsRune(p.disallowedChars, input)
+	}
+	return false
 }
