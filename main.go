@@ -20,7 +20,7 @@ const ResetAnsi = "\u001b[0m"
 func main() {
 	switch os.Args[1] {
 	case "v5":
-		v5.Main()
+		v5.Main(os.Args[2:])
 		return
 	}
 

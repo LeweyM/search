@@ -42,7 +42,7 @@ func (l CharacterLiteral) compile() (head *State, tail *State) {
 	startingState := State{}
 	endState := State{}
 
-	startingState.addTransition(&endState, SingleCharacterPredicate{character: l.Character}, string(l.Character))
+	startingState.addTransition(&endState, Predicate{allowedChars: string(l.Character)}, string(l.Character))
 	return &startingState, &endState
 }
 
@@ -50,6 +50,6 @@ func (w WildcardLiteral) compile() (head *State, tail *State) {
 	startingState := State{}
 	endState := State{}
 
-	startingState.addTransition(&endState, DisallowListPredicate{disallowList: "\n"}, ".")
+	startingState.addTransition(&endState, Predicate{disallowedChars: "\n"}, ".")
 	return &startingState, &endState
 }

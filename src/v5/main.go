@@ -5,26 +5,21 @@ import (
 	"fmt"
 	"github.com/pkg/browser"
 	"html/template"
-	"os"
 	"strings"
 )
 
 // Main just used for linking up the main functions
-func Main() {
-	main()
-}
-
-func main() {
-	switch os.Args[2] {
+func Main(args []string) {
+	switch args[0] {
 	case "draw":
-		Draw()
+		Draw(args[1])
 	default:
 		fmt.Println("command not recognized")
 	}
 }
 
-func Draw() {
-	tokens := lex(os.Args[3])
+func Draw(input string) {
+	tokens := lex(input)
 	parser := NewParser()
 	ast := parser.Parse(tokens)
 	head, _ := ast.compile()
@@ -37,6 +32,9 @@ func Draw() {
 </script>
 <div class="mermaid">
     {{ . }}
+</div>
+<div>
+<span style="white-space: pre-wrap">{{ . }}</span>
 </div>
 `)
 	if err != nil {
