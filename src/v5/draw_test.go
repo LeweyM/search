@@ -32,7 +32,7 @@ func TestState_Draw(t *testing.T) {
 			ast := parser.Parse(tokens)
 			fsm, _ := ast.compile()
 
-			drawing := fsm.Draw()
+			drawing, _ := fsm.Draw()
 
 			if drawing != tt.expected {
 				t.Fatalf("Expected drawing to be \n\"%s\", got\n\"%s\"", tt.expected, drawing)
