@@ -12,11 +12,9 @@ const (
 
 type Predicate func(input rune) bool
 
-type destination *State
-
 type Transition struct {
 	// to: a pointer to the next state
-	to destination
+	to *State
 	// predicate: a function to determine if the runner should move to the next state
 	predicate Predicate
 }
@@ -27,7 +25,7 @@ type State struct {
 	incoming    []*State
 }
 
-func (s *State) firstMatchingTransition(input rune) destination {
+func (s *State) firstMatchingTransition(input rune) *State {
 	for _, t := range s.transitions {
 		if t.predicate(input) {
 			return t.to
