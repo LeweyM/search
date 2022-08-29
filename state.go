@@ -55,6 +55,35 @@ func (s *State) addTransition(destination *State, predicate Predicate, debugSymb
 	destination.incoming = append(destination.incoming, s)
 }
 
+func (s *State) removeTransition(target Transition) {
+	newTransitions := []Transition{}
+
+	// 1. remove the target transition from s
+	for _, transition := range s.transitions {
+		if transition != target {
+			newTransitions = append(newTransitions, transition)
+		}
+	}
+	s.transitions = newTransitions
+
+	// 2. remove s from transition destination incoming states
+	target.to.incoming = filterState(target.to.incoming, target.from)
+}
+
+func (s *State) delete() {
+	// 1. remove s from incoming of connected nodes.
+	for _, t := range s.transitions {
+		(*State)(t.to).removeIncoming(s)
+	}
+
+	// 2. remove the outgoing transitions
+	s.transitions = nil
+}
+
+func (s *State) removeIncoming(target *State) {
+	s.incoming = filterState(s.incoming, target)
+}
+
 // adds the transitions of other State (s2) to this State (s).
 //
 // warning: do not use if State s2 has any incoming transitions.
@@ -64,18 +93,20 @@ func (s *State) merge(s2 *State) {
 	}
 
 	for _, t := range s2.transitions {
+		// 1. copy s2 transitions to s
 		s.addTransition(t.to, t.predicate, t.debugSymbol)
-
-		// remove where t.to.incoming = s2
-		t.to.incoming = filterState(t.to.incoming, s2)
 	}
+
+	// 2. remove s2
+	s2.delete()
 }
 
 func filterState(states []*State, s2 *State) []*State {
-	for i, state := range states {
-		if s2 == state {
-			return append(states[:i], states[i+1:]...)
+	var result []*State
+	for _, state := range states {
+		if s2 != state {
+			result = append(result, state)
 		}
 	}
-	return states
+	return result
 }
