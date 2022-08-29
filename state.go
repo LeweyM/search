@@ -10,13 +10,11 @@ const (
 	Normal         = "normal"
 )
 
-type destination *State
-
 type Transition struct {
 	debugSymbol string
 	// to: a pointer to the next state
-	to        destination
-	from      destination
+	to        *State
+	from      *State
 	predicate Predicate
 }
 
@@ -25,7 +23,7 @@ type State struct {
 	incoming    []*State
 }
 
-func (s *State) firstMatchingTransition(input rune) destination {
+func (s *State) firstMatchingTransition(input rune) *State {
 	for _, t := range s.transitions {
 		if t.predicate.test(input) {
 			return t.to
