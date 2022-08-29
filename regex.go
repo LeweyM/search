@@ -18,7 +18,8 @@ func (m *myRegex) MatchString(input string) bool {
 }
 
 func (m *myRegex) Debug() string {
-	return m.fsm.Draw()
+	graph, _ := m.fsm.Draw()
+	return graph
 }
 
 func match(runner *runner, input []rune) bool {

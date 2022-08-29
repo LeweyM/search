@@ -5,10 +5,10 @@ import (
 	"strings"
 )
 
-func (s *State) Draw() string {
+func (s *State) Draw() (graph string, nodeSet OrderedSet[*State]) {
 	// initialize sets
 	transitionSet := OrderedSet[Transition]{}
-	nodeSet := OrderedSet[*State]{}
+	nodeSet = OrderedSet[*State]{}
 
 	// collect transitions
 	visitNodes(s, &transitionSet, &nodeSet)
@@ -23,7 +23,7 @@ func (s *State) Draw() string {
 		toId := nodeSet.getIndex(t.to)
 		output = append(output, fmt.Sprintf("%d((%d)) --\"%s\"--> %d((%d))", fromId, fromId, t.debugSymbol, toId, toId))
 	}
-	return strings.Join(output, "\n")
+	return strings.Join(output, "\n"), nodeSet
 }
 
 func visitNodes(
@@ -55,39 +55,29 @@ func visitNodes(
 	}
 }
 
-// OrderedSet maintains an ordered set of unique items of type <T>
-type OrderedSet[T comparable] struct {
-	set       map[T]int
-	nextIndex int
+// drawAllGraphSteps iterates through the input string until the FSM falls into an end state, and prints a mermaid
+// graph at every step.
+func (r runner) drawAllGraphSteps(input string) []string {
+	r.Reset()
+	var currentStateStyles []string
+
+	for _, character := range input {
+		currentStateStyles = append(currentStateStyles, r.drawCurrentState())
+		r.Next(character)
+	}
+	currentStateStyles = append(currentStateStyles, r.drawCurrentState())
+	return currentStateStyles
 }
 
-func (o *OrderedSet[T]) add(t T) {
-	if o.set == nil {
-		o.set = make(map[T]int)
+// drawCurrentState will draw a mermaid graph from the FSM, as well as color the current node.
+func (r runner) drawCurrentState() string {
+	graph, nodeSet := r.head.Draw()
+	switch r.GetStatus() {
+	case Normal:
+		graph += fmt.Sprintf("\nstyle %d fill:#ff5555;", nodeSet.getIndex(r.current))
+	case Success:
+		graph += fmt.Sprintf("\nstyle %d fill:#00ab41;", nodeSet.getIndex(r.current))
 	}
 
-	if !o.has(t) {
-		o.set[t] = o.nextIndex
-		o.nextIndex++
-	}
-}
-
-func (o *OrderedSet[T]) has(t T) bool {
-	_, hasItem := o.set[t]
-	return hasItem
-}
-
-func (o *OrderedSet[T]) list() []T {
-	size := len(o.set)
-	list := make([]T, size)
-
-	for t, i := range o.set {
-		list[i] = t
-	}
-
-	return list
-}
-
-func (o *OrderedSet[T]) getIndex(t T) int {
-	return o.set[t]
+	return graph
 }
