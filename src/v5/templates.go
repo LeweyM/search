@@ -1,17 +1,14 @@
 package v5
 
-type graphData struct {
-	Graph string
-	Input inputSearchString
+type TemplateData struct {
+	Steps []Step
+	Regex string
+	Input string
 }
 
-type inputSearchString struct {
-	Left, Middle, Right string
-}
-
-type templateData struct {
-	Graphs []graphData
-	Regex  string
+type Step struct {
+	Graph      string
+	InputSplit []string
 }
 
 const fsmTemplate = `
@@ -40,13 +37,13 @@ const runnerTemplate = `
 	<button id="next" onClick="next()">
 		next
 	</button>
-	<p>Or use the arrow keys to step through the FSM</p>
+	<p>Or use the arrow keys to Step through the FSM</p>
 </div>
 
-{{ range .Graphs }}
-<div class="graph">
+{{ range $i, $s := .Steps }}
+<div class="graph" {{ if ne $i 0 }} style="visibility:hidden;" {{ else }} style="visibility:visible" {{ end }}>
 	<p style='font-size:64px'>
-		<span style='color:red'>{{ .Input.Left }}</span><span style='text-decoration-color:red;text-decoration-line:underline;'>{{ .Input.Middle }}</span><span>{{ .Input.Right }}</span>
+		<span style='color:red'>{{ index .InputSplit 0 }}</span><span style='text-decoration-color:red;text-decoration-line:underline;'>{{ index .InputSplit 1 }}</span><span>{{ index .InputSplit 2 }}</span>
 	</p>
 	<div class="mermaid">
 		{{ .Graph }}
@@ -64,8 +61,10 @@ function next() {
 	for (let j = 0; j < c.length; j++) {
 		if (i != j)	{
 		  c[j].style.display = 'none' 
+		  c[j].style.visibility = 'hidden' 
 		} else {
 		  c[j].style.display = 'block'
+		  c[j].style.visibility = 'visible' 
 		}	
 	}
 }
@@ -76,10 +75,12 @@ function prev() {
 	const c = document.getElementsByClassName('graph') 
 	for (let j = 0; j < c.length; j++) {
 		if (i != j)	{
-			c[j].style.display = 'none' 
+		  c[j].style.display = 'none' 
+		  c[j].style.visibility = 'hidden' 
 		} else {
-			c[j].style.display = 'block'
-		}
+		  c[j].style.display = 'block'
+		  c[j].style.visibility = 'visible' 
+		}	
 	}
 }
 

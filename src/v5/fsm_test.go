@@ -89,7 +89,7 @@ func TestFSMAgainstGoRegexPkg(t *testing.T) {
 			result := myRegex.MatchString(tt.input)
 
 			goRegexMatch := regexp.MustCompile(tt.regex).MatchString(tt.input)
-			t.Logf("Compiled state machine:\n%v\n", myRegex.Debug())
+			t.Logf("Compiled state machine:\n%v\n", myRegex.DebugFSM())
 
 			if result != goRegexMatch {
 				t.Fatalf(
