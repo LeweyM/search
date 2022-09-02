@@ -40,38 +40,88 @@ func Test_DrawFSM(t *testing.T) {
 
 func TestState_DebugMatch(t *testing.T) {
 	type test struct {
-		regex    string
-		input    string
-		expected []debugStep
+		name, regex, input string
+		expected           []debugStep
 	}
 
 	tests := []test{
 		{
+			name:  "normal with match",
 			regex: "abc",
 			input: "abc",
-			expected: []debugStep{{runnerDrawing: `graph LR
+			expected: []debugStep{
+				{runnerDrawing: `graph LR
 0((0)) --"a"--> 1((1))
 1((1)) --"b"--> 2((2))
 2((2)) --"c"--> 3((3))
-style 0 fill:#ff5555;`, currentCharacterIndex: 0}, {runnerDrawing: `graph LR
+style 0 fill:#ff5555;`, currentCharacterIndex: 0},
+				{runnerDrawing: `graph LR
 0((0)) --"a"--> 1((1))
 1((1)) --"b"--> 2((2))
 2((2)) --"c"--> 3((3))
-style 1 fill:#ff5555;`, currentCharacterIndex: 1}, {runnerDrawing: `graph LR
+style 1 fill:#ff5555;`, currentCharacterIndex: 1},
+				{runnerDrawing: `graph LR
 0((0)) --"a"--> 1((1))
 1((1)) --"b"--> 2((2))
 2((2)) --"c"--> 3((3))
-style 2 fill:#ff5555;`, currentCharacterIndex: 2}, {runnerDrawing: `graph LR
+style 2 fill:#ff5555;`, currentCharacterIndex: 2},
+				{runnerDrawing: `graph LR
 0((0)) --"a"--> 1((1))
 1((1)) --"b"--> 2((2))
 2((2)) --"c"--> 3((3))
 style 3 fill:#00ab41;`, currentCharacterIndex: 3},
 			},
 		},
+		{
+			name:  "backtracking with match",
+			regex: "aab",
+			input: "aaab",
+			expected: []debugStep{
+				{runnerDrawing: `graph LR
+0((0)) --"a"--> 1((1))
+1((1)) --"a"--> 2((2))
+2((2)) --"b"--> 3((3))
+style 0 fill:#ff5555;`, currentCharacterIndex: 0},
+				{runnerDrawing: `graph LR
+0((0)) --"a"--> 1((1))
+1((1)) --"a"--> 2((2))
+2((2)) --"b"--> 3((3))
+style 1 fill:#ff5555;`, currentCharacterIndex: 1},
+				{runnerDrawing: `graph LR
+0((0)) --"a"--> 1((1))
+1((1)) --"a"--> 2((2))
+2((2)) --"b"--> 3((3))
+style 2 fill:#ff5555;`, currentCharacterIndex: 2},
+				{runnerDrawing: `graph LR
+0((0)) --"a"--> 1((1))
+1((1)) --"a"--> 2((2))
+2((2)) --"b"--> 3((3))`, currentCharacterIndex: 3},
+				{runnerDrawing: `graph LR
+0((0)) --"a"--> 1((1))
+1((1)) --"a"--> 2((2))
+2((2)) --"b"--> 3((3))
+style 0 fill:#ff5555;`, currentCharacterIndex: 1},
+				{runnerDrawing: `graph LR
+0((0)) --"a"--> 1((1))
+1((1)) --"a"--> 2((2))
+2((2)) --"b"--> 3((3))
+style 1 fill:#ff5555;`, currentCharacterIndex: 2},
+				{runnerDrawing: `graph LR
+0((0)) --"a"--> 1((1))
+1((1)) --"a"--> 2((2))
+2((2)) --"b"--> 3((3))
+style 2 fill:#ff5555;`, currentCharacterIndex: 3},
+				{runnerDrawing: `graph LR
+0((0)) --"a"--> 1((1))
+1((1)) --"a"--> 2((2))
+2((2)) --"b"--> 3((3))
+style 3 fill:#00ab41;`, currentCharacterIndex: 4},
+			},
+		},
 	}
 
 	for _, tt := range tests {
-		t.Run(tt.input, func(t *testing.T) {
+		t.Run(tt.name, func(t *testing.T) {
 			regex := NewMyRegex(tt.regex)
 			steps := regex.DebugMatch(tt.input)
 

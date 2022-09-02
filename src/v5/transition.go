@@ -4,6 +4,14 @@ import (
 	"strings"
 )
 
+type Transition struct {
+	debugSymbol string
+	// to: a pointer to the next state
+	to        *State
+	from      *State
+	predicate Predicate
+}
+
 type Predicate struct {
 	allowedChars    string
 	disallowedChars string

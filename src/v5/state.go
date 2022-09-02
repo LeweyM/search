@@ -10,14 +10,6 @@ const (
 	Normal         = "normal"
 )
 
-type Transition struct {
-	debugSymbol string
-	// to: a pointer to the next state
-	to        *State
-	from      *State
-	predicate Predicate
-}
-
 type State struct {
 	transitions []Transition
 	incoming    []*State
