@@ -19,7 +19,7 @@ func NewMyRegex(re string) *myRegex {
 
 func (m *myRegex) MatchString(input string) bool {
 	testRunner := NewRunner(m.fsm)
-	return match(testRunner, []rune(input), dummyChan[debugStep](), 0)
+	return match(testRunner, []rune(input), nil, 0)
 }
 
 func (m *myRegex) DebugFSM() string {
@@ -44,11 +44,15 @@ func (m *myRegex) DebugMatch(input string) []debugStep {
 
 func match(runner *runner, input []rune, debugChan chan debugStep, offset int) bool {
 	runner.Reset()
-	debugChan <- debugStep{runnerDrawing: runner.drawCurrentState(), currentCharacterIndex: offset}
+	if debugChan != nil {
+		debugChan <- debugStep{runnerDrawing: runner.drawCurrentState(), currentCharacterIndex: offset}
+	}
 
 	for i, character := range input {
 		runner.Next(character)
-		debugChan <- debugStep{runnerDrawing: runner.drawCurrentState(), currentCharacterIndex: offset + i + 1}
+		if debugChan != nil {
+			debugChan <- debugStep{runnerDrawing: runner.drawCurrentState(), currentCharacterIndex: offset + i + 1}
+		}
 		status := runner.GetStatus()
 
 		if status == Fail {
@@ -61,14 +65,4 @@ func match(runner *runner, input []rune, debugChan chan debugStep, offset int) b
 	}
 
 	return runner.GetStatus() == Success
-}
-
-func dummyChan[T any]() chan T {
-	dummyChan := make(chan T)
-	go func() {
-		for {
-			<-dummyChan
-		}
-	}()
-	return dummyChan
 }
