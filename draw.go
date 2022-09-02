@@ -5,6 +5,12 @@ import (
 	"strings"
 )
 
+type StepDrawing struct {
+	graphDrawing          string
+	input                 string
+	currentCharacterIndex int
+}
+
 func (s *State) Draw() (graph string, nodeSet OrderedSet[*State]) {
 	// initialize sets
 	transitionSet := OrderedSet[Transition]{}
@@ -53,20 +59,6 @@ func visitNodes(
 	for _, sourceNode := range node.incoming {
 		visitNodes(sourceNode, transitions, visited)
 	}
-}
-
-// drawAllGraphSteps iterates through the input string until the FSM falls into an end state, and prints a mermaid
-// graph at every step.
-func (r runner) drawAllGraphSteps(input string) []string {
-	r.Reset()
-	var currentStateStyles []string
-
-	for _, character := range input {
-		currentStateStyles = append(currentStateStyles, r.drawCurrentState())
-		r.Next(character)
-	}
-	currentStateStyles = append(currentStateStyles, r.drawCurrentState())
-	return currentStateStyles
 }
 
 // drawCurrentState will draw a mermaid graph from the FSM, as well as color the current node.

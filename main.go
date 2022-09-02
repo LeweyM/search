@@ -23,58 +23,28 @@ func Main(args []string) {
 }
 
 func RenderFSM(input string) {
-	tokens := lex(input)
-	parser := NewParser()
-	ast := parser.Parse(tokens)
-	head, _ := ast.compile()
-
-	graph, _ := head.Draw()
-
+	graph := NewMyRegex(input).DebugFSM()
 	renderTemplateToBrowser(fsmTemplate, graph)
 }
 
 // RenderRunner will render every step of the runner until it fails or succeeds. The template will then take care
 // of hiding all but one of the steps to give the illusion of stepping through the input characters.
 func RenderRunner(regex, input string) {
-	tokens := lex(regex)
-	parser := NewParser()
-	ast := parser.Parse(tokens)
-	head, _ := ast.compile()
+	newMyRegex := NewMyRegex(regex)
+	debugSteps := newMyRegex.DebugMatch(input)
 
-	allGraphSteps := NewRunner(head).drawAllGraphSteps(input)
-
-	var graphs []graphData
-	for letterIndex, graphStep := range allGraphSteps {
-		graphs = append(graphs, graphData{
-			Graph: graphStep,
-			Input: splitSearchString(input, letterIndex),
+	var steps []Step
+	for _, step := range debugSteps {
+		steps = append(steps, Step{
+			Graph:      step.runnerDrawing,
+			InputSplit: threeSplitString(input, step.currentCharacterIndex),
 		})
 	}
 
-	renderTemplateToBrowser(runnerTemplate, templateData{
-		Graphs: graphs,
-		Regex:  regex,
+	renderTemplateToBrowser(runnerTemplate, TemplateData{
+		Steps: steps,
+		Regex: regex,
 	})
-}
-
-// splitSearchString divides the search input string into three pieces so that we can render in the browser:
-// 1. What has already been processed
-// 2. The next character to process
-// 3. What is yet to be processed
-func splitSearchString(input string, currentLetterIndex int) inputSearchString {
-	var left, middle, right string
-
-	left = input[:currentLetterIndex]
-	if currentLetterIndex < len(input) {
-		middle = string(input[currentLetterIndex])
-		right = input[currentLetterIndex+1:]
-	}
-
-	return inputSearchString{
-		Left:   left,
-		Middle: middle,
-		Right:  right,
-	}
 }
 
 func renderTemplateToBrowser(tmplt string, data any) {
@@ -94,4 +64,17 @@ func renderTemplateToBrowser(tmplt string, data any) {
 		panic(err)
 	}
 	return
+}
+
+// threeSplitString divides a string into three pieces on a given index
+func threeSplitString(s string, i int) []string {
+	var left, middle, right string
+
+	left = s[:i]
+	if i < len(s) {
+		middle = string(s[i])
+		right = s[i+1:]
+	}
+
+	return []string{left, middle, right}
 }
