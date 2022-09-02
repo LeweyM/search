@@ -42,33 +42,30 @@ func TestState_DebugMatch(t *testing.T) {
 	type test struct {
 		regex    string
 		input    string
-		expected []string
+		expected []debugStep
 	}
 
 	tests := []test{
 		{
 			regex: "abc",
 			input: "abc",
-			expected: []string{`graph LR
+			expected: []debugStep{{runnerDrawing: `graph LR
 0((0)) --"a"--> 1((1))
 1((1)) --"b"--> 2((2))
 2((2)) --"c"--> 3((3))
-style 0 fill:#ff5555;`,
-				`graph LR
+style 0 fill:#ff5555;`, currentCharacterIndex: 0}, {runnerDrawing: `graph LR
 0((0)) --"a"--> 1((1))
 1((1)) --"b"--> 2((2))
 2((2)) --"c"--> 3((3))
-style 1 fill:#ff5555;`,
-				`graph LR
+style 1 fill:#ff5555;`, currentCharacterIndex: 1}, {runnerDrawing: `graph LR
 0((0)) --"a"--> 1((1))
 1((1)) --"b"--> 2((2))
 2((2)) --"c"--> 3((3))
-style 2 fill:#ff5555;`,
-				`graph LR
+style 2 fill:#ff5555;`, currentCharacterIndex: 2}, {runnerDrawing: `graph LR
 0((0)) --"a"--> 1((1))
 1((1)) --"b"--> 2((2))
 2((2)) --"c"--> 3((3))
-style 3 fill:#00ab41;`,
+style 3 fill:#00ab41;`, currentCharacterIndex: 3},
 			},
 		},
 	}
@@ -76,20 +73,11 @@ style 3 fill:#00ab41;`,
 	for _, tt := range tests {
 		t.Run(tt.input, func(t *testing.T) {
 			regex := NewMyRegex(tt.regex)
-			stepDrawings := regex.DebugMatch(tt.input)
-			result := mapToGraphDrawings(stepDrawings)
+			steps := regex.DebugMatch(tt.input)
 
-			if !reflect.DeepEqual(result, tt.expected) {
-				t.Fatalf("Expected drawing to be \n\"%s\"\ngot\n\"%s\"", tt.expected, result)
+			if !reflect.DeepEqual(tt.expected, steps) {
+				t.Fatalf("Expected drawing to be \n\"%v\"\ngot\n\"%v\"", tt.expected, steps)
 			}
 		})
 	}
-}
-
-func mapToGraphDrawings(drawings []StepDrawing) []string {
-	res := make([]string, len(drawings))
-	for i := range drawings {
-		res[i] = drawings[i].graphDrawing
-	}
-	return res
 }

@@ -5,12 +5,6 @@ import (
 	"strings"
 )
 
-type StepDrawing struct {
-	graphDrawing          string
-	input                 string
-	currentCharacterIndex int
-}
-
 func (s *State) Draw() (graph string, nodeSet OrderedSet[*State]) {
 	// initialize sets
 	transitionSet := OrderedSet[Transition]{}
