@@ -73,7 +73,7 @@ func (s *State) merge(s2 *State) {
 func (s *State) delete() {
 	// 1. remove s from incoming of connected nodes.
 	for _, t := range s.transitions {
-		(*State)(t.to).removeIncoming(s)
+		t.to.removeIncoming(s)
 	}
 
 	// 2. remove the outgoing transitions
@@ -81,15 +81,11 @@ func (s *State) delete() {
 }
 
 func (s *State) removeIncoming(target *State) {
-	s.incoming = filterState(s.incoming, target)
-}
-
-func filterState(states []*State, s2 *State) []*State {
-	var result []*State
-	for _, state := range states {
-		if s2 != state {
-			result = append(result, state)
+	var newIncoming []*State
+	for _, state := range s.incoming {
+		if target != state {
+			newIncoming = append(newIncoming, state)
 		}
 	}
-	return result
+	s.incoming = newIncoming
 }
