@@ -1,37 +1,44 @@
 package v6
 
 type runner struct {
-	head    *State
-	current *State
+	head         *State
+	activeStates Set[*State]
 }
 
 func NewRunner(head *State) *runner {
 	r := &runner{
-		head:    head,
-		current: head,
+		head:         head,
+		activeStates: NewSet[*State](head),
 	}
 
 	return r
 }
 
 func (r *runner) Next(input rune) {
-	if r.current == nil {
+	if r.activeStates.size() == 0 {
 		return
 	}
 
-	// move to next matching transition
-	r.current = r.current.firstMatchingTransition(input)
+	nextActiveStates := Set[*State]{}
+	for activeState := range r.activeStates {
+		for _, nextState := range activeState.matchingTransitions(input) {
+			nextActiveStates.add(nextState)
+		}
+	}
+	r.activeStates = nextActiveStates
 }
 
 func (r *runner) GetStatus() Status {
-	// if the current state is nil, return Fail
-	if r.current == nil {
+	// if there are no actives states, return Fail
+	if r.activeStates.size() == 0 {
 		return Fail
 	}
 
-	// if the current state has no transitions from it, return Success
-	if r.current.isSuccessState() {
-		return Success
+	// if any of the active states is a success state, return Success
+	for state := range r.activeStates {
+		if state.isSuccessState() {
+			return Success
+		}
 	}
 
 	// else, return normal
@@ -39,5 +46,9 @@ func (r *runner) GetStatus() Status {
 }
 
 func (r *runner) Reset() {
-	r.current = r.head
+	r.activeStates = NewSet[*State](r.head)
+}
+
+func (r *runner) Start() {
+	r.activeStates.add(r.head)
 }
