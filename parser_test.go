@@ -26,6 +26,20 @@ func TestParser(t *testing.T) {
 				WildcardLiteral{},
 			},
 		}},
+		{name: "branches", input: "ab|cd|ef", expectedResult: &Branch{ChildNodes: []Node{
+			&Group{ChildNodes: []Node{
+				CharacterLiteral{Character: 'a'},
+				CharacterLiteral{Character: 'b'},
+			}},
+			&Group{ChildNodes: []Node{
+				CharacterLiteral{Character: 'c'},
+				CharacterLiteral{Character: 'd'},
+			}},
+			&Group{ChildNodes: []Node{
+				CharacterLiteral{Character: 'e'},
+				CharacterLiteral{Character: 'f'},
+			}},
+		}}},
 	}
 
 	for _, tt := range tests {
