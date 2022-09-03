@@ -59,16 +59,19 @@ style 0 fill:#ff5555;`, currentCharacterIndex: 0},
 0((0)) --"a"--> 1((1))
 1((1)) --"b"--> 2((2))
 2((2)) --"c"--> 3((3))
+style 0 fill:#ff5555;
 style 1 fill:#ff5555;`, currentCharacterIndex: 1},
 				{runnerDrawing: `graph LR
 0((0)) --"a"--> 1((1))
 1((1)) --"b"--> 2((2))
 2((2)) --"c"--> 3((3))
+style 0 fill:#ff5555;
 style 2 fill:#ff5555;`, currentCharacterIndex: 2},
 				{runnerDrawing: `graph LR
 0((0)) --"a"--> 1((1))
 1((1)) --"b"--> 2((2))
 2((2)) --"c"--> 3((3))
+style 0 fill:#ff5555;
 style 3 fill:#00ab41;`, currentCharacterIndex: 3},
 			},
 		},
@@ -86,35 +89,27 @@ style 0 fill:#ff5555;`, currentCharacterIndex: 0},
 0((0)) --"a"--> 1((1))
 1((1)) --"a"--> 2((2))
 2((2)) --"b"--> 3((3))
+style 0 fill:#ff5555;
 style 1 fill:#ff5555;`, currentCharacterIndex: 1},
 				{runnerDrawing: `graph LR
 0((0)) --"a"--> 1((1))
 1((1)) --"a"--> 2((2))
 2((2)) --"b"--> 3((3))
+style 0 fill:#ff5555;
+style 1 fill:#ff5555;
 style 2 fill:#ff5555;`, currentCharacterIndex: 2},
 				{runnerDrawing: `graph LR
 0((0)) --"a"--> 1((1))
 1((1)) --"a"--> 2((2))
-2((2)) --"b"--> 3((3))`, currentCharacterIndex: 3},
-				{runnerDrawing: `graph LR
-0((0)) --"a"--> 1((1))
-1((1)) --"a"--> 2((2))
 2((2)) --"b"--> 3((3))
-style 0 fill:#ff5555;`, currentCharacterIndex: 1},
-				{runnerDrawing: `graph LR
-0((0)) --"a"--> 1((1))
-1((1)) --"a"--> 2((2))
-2((2)) --"b"--> 3((3))
-style 1 fill:#ff5555;`, currentCharacterIndex: 2},
-				{runnerDrawing: `graph LR
-0((0)) --"a"--> 1((1))
-1((1)) --"a"--> 2((2))
-2((2)) --"b"--> 3((3))
+style 0 fill:#ff5555;
+style 1 fill:#ff5555;
 style 2 fill:#ff5555;`, currentCharacterIndex: 3},
 				{runnerDrawing: `graph LR
 0((0)) --"a"--> 1((1))
 1((1)) --"a"--> 2((2))
 2((2)) --"b"--> 3((3))
+style 0 fill:#ff5555;
 style 3 fill:#00ab41;`, currentCharacterIndex: 4},
 			},
 		},

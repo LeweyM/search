@@ -86,6 +86,8 @@ func TestFSMAgainstGoRegexPkg(t *testing.T) {
 		{"branch matching 1st branch", "ab|cd", "ab"},
 		{"branch matching 2nd branch", "ab|cd", "cd"},
 		{"branch not matching", "ab|cd", "ac"},
+		{"branch with shared characters", "dog|dot", "dog"}, // will work
+		{"branch with shared characters", "dog|dot", "dot"}, // will not work
 	}
 
 	for _, tt := range tests {
@@ -119,7 +121,7 @@ func FuzzFSM(f *testing.F) {
 	f.Add("ca(t)(s)", "dog")
 
 	f.Fuzz(func(t *testing.T, regex, input string) {
-		if strings.ContainsAny(regex, "[]{}$^*+?\\") {
+		if strings.ContainsAny(regex, "[]{}$^|*+?\\") {
 			t.Skip()
 		}
 

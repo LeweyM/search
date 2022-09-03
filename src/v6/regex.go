@@ -45,19 +45,16 @@ func (m *myRegex) DebugMatch(input string) []debugStep {
 func match(runner *runner, input []rune, debugChan chan debugStep, offset int) bool {
 	runner.Reset()
 	if debugChan != nil {
-		debugChan <- debugStep{runnerDrawing: runner.drawCurrentState(), currentCharacterIndex: offset}
+		debugChan <- debugStep{runnerDrawing: runner.drawSnapshot(), currentCharacterIndex: offset}
 	}
 
 	for i, character := range input {
 		runner.Next(character)
+		runner.Start()
 		if debugChan != nil {
-			debugChan <- debugStep{runnerDrawing: runner.drawCurrentState(), currentCharacterIndex: offset + i + 1}
+			debugChan <- debugStep{runnerDrawing: runner.drawSnapshot(), currentCharacterIndex: offset + i + 1}
 		}
 		status := runner.GetStatus()
-
-		if status == Fail {
-			return match(runner, input[1:], debugChan, offset+1)
-		}
 
 		if status == Success {
 			return true
