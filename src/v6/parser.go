@@ -21,6 +21,15 @@ func (p *Parser) Parse(tokens []token) Node {
 			node := p.pop()
 			node.Append(WildcardLiteral{})
 			p.push(node)
+		case Pipe:
+			node := p.pop()
+			switch b := node.(type) {
+			case *Branch:
+				b.Split()
+			default:
+				node = &Branch{ChildNodes: []Node{node, &Group{}}}
+			}
+			p.push(node)
 		}
 	}
 

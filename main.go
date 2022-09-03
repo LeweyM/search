@@ -9,6 +9,7 @@ import (
 	"search/src/search"
 	"search/src/trigram"
 	v5 "search/src/v5"
+	v6 "search/src/v6"
 	"sort"
 	"strconv"
 	"strings"
@@ -21,6 +22,9 @@ func main() {
 	switch os.Args[1] {
 	case "v5":
 		v5.Main(os.Args[2:])
+		return
+	case "v6":
+		v6.Main(os.Args[2:])
 		return
 	}
 
