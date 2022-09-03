@@ -55,8 +55,8 @@ func visitNodes(
 	}
 }
 
-// drawCurrentState will draw a mermaid graph from the FSM, as well as color the current node.
-func (r runner) drawCurrentState() string {
+// drawSnapshot will draw a mermaid graph from the FSM, as well as color the current node.
+func (r runner) drawSnapshot() string {
 	graph, nodeSet := r.head.Draw()
 	switch r.GetStatus() {
 	case Normal:
