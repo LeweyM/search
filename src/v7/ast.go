@@ -55,7 +55,7 @@ func (b *Branch) compile() (head *State, tail *State) {
 	startState := &State{}
 	for _, expression := range b.ChildNodes {
 		nextStateHead, _ := expression.compile()
-		startState.merge(nextStateHead)
+		startState.addEpsilon(nextStateHead)
 	}
 	return startState, startState
 }

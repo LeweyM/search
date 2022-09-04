@@ -22,7 +22,11 @@ func (s *State) Draw() (graph string, nodeSet OrderedSet[*State]) {
 	for _, t := range transitionSet.list() {
 		fromId := nodeSet.getIndex(t.from)
 		toId := nodeSet.getIndex(t.to)
-		output = append(output, fmt.Sprintf("%d((%d)) --\"%s\"--> %d((%d))", fromId, fromId, t.debugSymbol, toId, toId))
+		if t.debugSymbol == "ε" {
+			output = append(output, fmt.Sprintf("%d((%d)) -.\"%s\".-> %d((%d))", fromId, fromId, t.debugSymbol, toId, toId))
+		} else {
+			output = append(output, fmt.Sprintf("%d((%d)) --\"%s\"--> %d((%d))", fromId, fromId, t.debugSymbol, toId, toId))
+		}
 	}
 	return strings.Join(output, "\n"), nodeSet
 }
@@ -37,7 +41,16 @@ func visitNodes(
 		return
 	}
 
-	// 2. Add the transitions from this node to a set of transitions.
+	// 2.i. Add transitions for the nodes epsilon transitions
+	for _, epsilon := range node.epsilons {
+		transitions.add(Transition{
+			debugSymbol: "ε",
+			from:        node,
+			to:          epsilon,
+			predicate:   Predicate{},
+		})
+	}
+	// 2.ii Add the transitions from this node to a set of transitions.
 	for _, transition := range node.transitions {
 		transitions.add(transition)
 	}
@@ -45,6 +58,10 @@ func visitNodes(
 	// 3. Mark the current node as visited.
 	visited.add(node)
 
+	// 4.i. Recur on every epsilon.
+	for _, epsilon := range node.epsilons {
+		visitNodes(epsilon, transitions, visited)
+	}
 	// 4. Recur on the destination node of every outgoing transition.
 	for _, transition := range node.transitions {
 		destinationNode := transition.to
