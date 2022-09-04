@@ -5,11 +5,11 @@ import (
 	"fmt"
 	"io"
 	"os"
-	"search/src/screen"
 	"search/src/search"
 	"search/src/trigram"
 	v5 "search/src/v5"
 	v6 "search/src/v6"
+	v7 "search/src/v7"
 	"sort"
 	"strconv"
 	"strings"
@@ -26,29 +26,32 @@ func main() {
 	case "v6":
 		v6.Main(os.Args[2:])
 		return
+	case "v7":
+		v7.Main(os.Args[2:])
+		return
 	}
 
-	input := make(chan string)
-	inputOutput := os.Stdin
-	sc := screen.NewScreen(os.Stdout, input)
-	ctx := context.Background()
-
-	sc.Run(ctx, inputOutput, func() { os.Exit(1) })
-	path := os.Args[1]
-
-	file, err := os.Open(path)
-	if err != nil {
-		panic(err)
-	}
-	fileInfo, err := file.Stat()
-	if err != nil {
-		panic(err)
-	}
-	if fileInfo.IsDir() {
-		listDir(ctx, input, sc, path)
-	} else {
-		list(ctx, input, sc, path)
-	}
+	//input := make(chan string)
+	//inputOutput := os.Stdin
+	//sc := screen.NewScreen(os.Stdout, input)
+	//ctx := context.Background()
+	//
+	//sc.Run(ctx, inputOutput, func() { os.Exit(1) })
+	//path := os.Args[1]
+	//
+	//file, err := os.Open(path)
+	//if err != nil {
+	//	panic(err)
+	//}
+	//fileInfo, err := file.Stat()
+	//if err != nil {
+	//	panic(err)
+	//}
+	//if fileInfo.IsDir() {
+	//	listDir(ctx, input, sc, path)
+	//} else {
+	//	list(ctx, input, sc, path)
+	//}
 	return
 }
 
