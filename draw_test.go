@@ -7,29 +7,40 @@ import (
 
 func Test_DrawFSM(t *testing.T) {
 	type test struct {
-		input, expected string
+		name, regex, expected string
 	}
 
 	tests := []test{
 		{
-			input: "abc",
+			name:  "simple example",
+			regex: "abc",
 			expected: `graph LR
 0((0)) --"a"--> 1((1))
 1((1)) --"b"--> 2((2))
 2((2)) --"c"--> 3((3))`,
 		},
 		{
-			input: "a b",
+			name:  "example with whitespace",
+			regex: "a b",
 			expected: `graph LR
 0((0)) --"a"--> 1((1))
 1((1)) --" "--> 2((2))
 2((2)) --"b"--> 3((3))`,
 		},
+		{
+			name:  "branch with epsilon",
+			regex: "a|b",
+			expected: `graph LR
+0((0)) -."ε".-> 1((1))
+0((0)) -."ε".-> 3((3))
+1((1)) --"a"--> 2((2))
+3((3)) --"b"--> 4((4))`,
+		},
 	}
 
 	for _, tt := range tests {
-		t.Run(tt.input, func(t *testing.T) {
-			drawing := NewMyRegex(tt.input).DebugFSM()
+		t.Run(tt.name, func(t *testing.T) {
+			drawing := NewMyRegex(tt.regex).DebugFSM()
 
 			if drawing != tt.expected {
 				t.Fatalf("Expected drawing to be \n\"%s\", got\n\"%s\"", tt.expected, drawing)

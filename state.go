@@ -12,6 +12,7 @@ const (
 
 type State struct {
 	transitions []Transition
+	epsilons    []*State
 	incoming    []*State
 }
 
@@ -26,7 +27,7 @@ func (s *State) matchingTransitions(input rune) []*State {
 }
 
 func (s *State) isSuccessState() bool {
-	if len(s.transitions) == 0 {
+	if len(s.transitions) == 0 && len(s.epsilons) == 0 {
 		return true
 	}
 
@@ -42,6 +43,11 @@ func (s *State) addTransition(destination *State, predicate Predicate, debugSymb
 		predicate:   predicate,
 	}
 	s.transitions = append(s.transitions, t)
+	destination.incoming = append(destination.incoming, s)
+}
+
+func (s *State) addEpsilon(destination *State) {
+	s.epsilons = append(s.epsilons, destination)
 	destination.incoming = append(destination.incoming, s)
 }
 

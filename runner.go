@@ -19,6 +19,8 @@ func (r *runner) Next(input rune) {
 		return
 	}
 
+	r.advanceEpsilons()
+
 	nextActiveStates := Set[*State]{}
 	for activeState := range r.activeStates {
 		for _, nextState := range activeState.matchingTransitions(input) {
@@ -26,6 +28,8 @@ func (r *runner) Next(input rune) {
 		}
 	}
 	r.activeStates = nextActiveStates
+
+	r.advanceEpsilons()
 }
 
 func (r *runner) GetStatus() Status {
@@ -47,8 +51,25 @@ func (r *runner) GetStatus() Status {
 
 func (r *runner) Reset() {
 	r.activeStates = NewSet[*State](r.head)
+	r.advanceEpsilons()
 }
 
 func (r *runner) Start() {
 	r.activeStates.add(r.head)
+	r.advanceEpsilons()
+}
+
+func (r *runner) advanceEpsilons() {
+	for state := range r.activeStates {
+		r.activateConnectedEpsilons(state)
+	}
+}
+
+func (r *runner) activateConnectedEpsilons(state *State) {
+	for _, epsilon := range state.epsilons {
+		if !r.activeStates.has(epsilon) {
+			r.activeStates.add(epsilon)
+			r.activateConnectedEpsilons(state)
+		}
+	}
 }
