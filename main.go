@@ -10,6 +10,7 @@ import (
 	v5 "search/src/v5"
 	v6 "search/src/v6"
 	v7 "search/src/v7"
+	v8 "search/src/v8"
 	"sort"
 	"strconv"
 	"strings"
@@ -28,6 +29,9 @@ func main() {
 		return
 	case "v7":
 		v7.Main(os.Args[2:])
+		return
+	case "v8":
+		v8.Main(os.Args[2:])
 		return
 	}
 
