@@ -76,6 +76,7 @@ func (s *State) delete() {
 
 	// 2. remove the outgoing transitions
 	s.transitions = nil
+	s.epsilons = nil
 }
 
 func (s *State) removeIncoming(target *State) {
