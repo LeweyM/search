@@ -30,6 +30,13 @@ func (p *Parser) Parse(tokens []token) Node {
 				node = &Branch{ChildNodes: []Node{node, &Group{}}}
 			}
 			p.push(node)
+		case LParen:
+			p.pushNewGroup()
+		case RParen:
+			inner := p.pop()
+			outer := p.pop()
+			outer.Append(inner)
+			p.push(outer)
 		}
 	}
 

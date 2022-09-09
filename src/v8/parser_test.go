@@ -40,6 +40,17 @@ func TestParser(t *testing.T) {
 				CharacterLiteral{Character: 'f'},
 			}},
 		}}},
+		{name: "groups", input: "a(b|c)", expectedResult: &Group{ChildNodes: []Node{
+			CharacterLiteral{Character: 'a'},
+			&Branch{ChildNodes: []Node{
+				&Group{ChildNodes: []Node{
+					CharacterLiteral{Character: 'b'},
+				}},
+				&Group{ChildNodes: []Node{
+					CharacterLiteral{Character: 'c'},
+				}},
+			}},
+		}}},
 	}
 
 	for _, tt := range tests {
