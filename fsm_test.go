@@ -92,7 +92,8 @@ func TestFSMAgainstGoRegexPkg(t *testing.T) {
 		{"branch with left side empty", "|a", ""},
 
 		// group
-		{"concatenated word with grouped branch", "1(|)", "0"},
+		{"word followed by group", "1(|)", "0"},
+		{"group followed by word", "(()0)0", "0"},
 		//{"empty group concatenated with string", "()1", "0"},
 		//{"empty group", "()", "0"},
 	}

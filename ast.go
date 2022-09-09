@@ -66,7 +66,12 @@ func (g *Group) compile() (head *State, tail *State) {
 
 	for _, expression := range g.ChildNodes {
 		nextStateHead, nextStateTail := expression.compile()
-		currentTail.merge(nextStateHead)
+		_, isChar := expression.(CharacterLiteral)
+		if isChar {
+			currentTail.merge(nextStateHead)
+		} else {
+			currentTail.addEpsilon(nextStateHead)
+		}
 		currentTail = nextStateTail
 	}
 
