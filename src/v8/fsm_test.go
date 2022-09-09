@@ -90,6 +90,11 @@ func TestFSMAgainstGoRegexPkg(t *testing.T) {
 		{"branch with shared characters", "dog|dot", "dot"},
 		{"branch with right side empty", "a|", ""},
 		{"branch with left side empty", "|a", ""},
+
+		// group
+		{"concatenated word with grouped branch", "1(|)", "0"},
+		//{"empty group concatenated with string", "()1", "0"},
+		//{"empty group", "()", "0"},
 	}
 
 	for _, tt := range tests {
