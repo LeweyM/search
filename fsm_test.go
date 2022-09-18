@@ -93,9 +93,8 @@ func TestFSMAgainstGoRegexPkg(t *testing.T) {
 
 		// group
 		{"word followed by group", "1(|)", "0"},
-		{"group followed by word", "(()0)0", "0"},
-		//{"empty group concatenated with string", "()1", "0"},
-		//{"empty group", "()", "0"},
+		{"empty group concatenation", "(()0)0", "0"},
+		{"group followed by word", "(|)1", "0"},
 	}
 
 	for _, tt := range tests {
