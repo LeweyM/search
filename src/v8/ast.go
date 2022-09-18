@@ -53,11 +53,13 @@ type WildcardLiteral struct{}
 
 func (b *Branch) compile() (head *State, tail *State) {
 	startState := &State{}
+	endState := &State{}
 	for _, expression := range b.ChildNodes {
-		nextStateHead, _ := expression.compile()
+		nextStateHead, tail := expression.compile()
 		startState.addEpsilon(nextStateHead)
+		tail.addEpsilon(endState)
 	}
-	return startState, startState
+	return startState, endState
 }
 
 func (g *Group) compile() (head *State, tail *State) {
