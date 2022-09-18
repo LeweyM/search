@@ -29,7 +29,7 @@ func TestParser(t *testing.T) {
 			result := p.Parse(tokens)
 
 			if !reflect.DeepEqual(result, tt.expectedResult) {
-				t.Fatalf("Expected [%+v], got [%+v]", tt.expectedResult, result)
+				t.Fatalf("Expected:\n%+v\n\nGot:\n%+v\n", tt.expectedResult, result)
 			}
 		})
 	}
