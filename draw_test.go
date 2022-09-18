@@ -5,42 +5,61 @@ import (
 	"testing"
 )
 
+func abcBuilder() *State {
+	state1, state2, state3, state4 := &State{}, &State{}, &State{}, &State{}
+
+	state1.addTransition(state2, Predicate{allowedChars: "a"}, "a")
+	state2.addTransition(state3, Predicate{allowedChars: "b"}, "b")
+	state3.addTransition(state4, Predicate{allowedChars: "c"}, "c")
+	return state1
+}
+
+func aaaBuilder() *State {
+	state1, state2, state3, state4 := &State{}, &State{}, &State{}, &State{}
+
+	state1.addTransition(state2, Predicate{allowedChars: "a"}, "a")
+	state2.addTransition(state3, Predicate{allowedChars: "a"}, "a")
+	state3.addTransition(state4, Predicate{allowedChars: "a"}, "a")
+	return state1
+}
+
+func aεbBuilder() *State {
+	state1, state2, state3, state4 := &State{}, &State{}, &State{}, &State{}
+
+	state1.addTransition(state2, Predicate{allowedChars: "a"}, "a")
+	state2.addEpsilon(state3)
+	state3.addTransition(state4, Predicate{allowedChars: "b"}, "b")
+	return state1
+}
+
 func Test_DrawFSM(t *testing.T) {
 	type test struct {
-		name, regex, expected string
+		name, expected string
+		fsmBuilder     func() *State
 	}
 
 	tests := []test{
 		{
-			name:  "simple example",
-			regex: "abc",
+			name:       "simple example",
+			fsmBuilder: abcBuilder,
 			expected: `graph LR
 0((0)) --"a"--> 1((1))
 1((1)) --"b"--> 2((2))
 2((2)) --"c"--> 3((3))`,
 		},
 		{
-			name:  "example with whitespace",
-			regex: "a b",
+			name:       "graph with epsilon",
+			fsmBuilder: aεbBuilder,
 			expected: `graph LR
 0((0)) --"a"--> 1((1))
-1((1)) --" "--> 2((2))
+1((1)) -."ε".-> 2((2))
 2((2)) --"b"--> 3((3))`,
-		},
-		{
-			name:  "branch with epsilon",
-			regex: "a|b",
-			expected: `graph LR
-0((0)) -."ε".-> 1((1))
-0((0)) -."ε".-> 3((3))
-1((1)) --"a"--> 2((2))
-3((3)) --"b"--> 4((4))`,
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			drawing := NewMyRegex(tt.regex).DebugFSM()
+			drawing, _ := tt.fsmBuilder().Draw()
 
 			if drawing != tt.expected {
 				t.Fatalf("Expected drawing to be \n\"%s\", got\n\"%s\"", tt.expected, drawing)
@@ -51,14 +70,15 @@ func Test_DrawFSM(t *testing.T) {
 
 func Test_DrawSnapshot(t *testing.T) {
 	type test struct {
-		name, regex, input, expected string
+		name, input, expected string
+		fsmBuilder            func() *State
 	}
 
 	tests := []test{
 		{
-			name:  "initial snapshot",
-			regex: "abc",
-			input: "",
+			name:       "initial snapshot",
+			fsmBuilder: abcBuilder,
+			input:      "",
 			expected: `graph LR
 0((0)) --"a"--> 1((1))
 1((1)) --"b"--> 2((2))
@@ -66,9 +86,9 @@ func Test_DrawSnapshot(t *testing.T) {
 style 0 fill:#ff5555;`,
 		},
 		{
-			name:  "after a single letter",
-			regex: "abc",
-			input: "a",
+			name:       "after a single letter",
+			fsmBuilder: abcBuilder,
+			input:      "a",
 			expected: `graph LR
 0((0)) --"a"--> 1((1))
 1((1)) --"b"--> 2((2))
@@ -77,9 +97,9 @@ style 0 fill:#ff5555;
 style 1 fill:#ff5555;`,
 		},
 		{
-			name:  "all states highlighted",
-			regex: "aaa",
-			input: "aaa",
+			name:       "all states highlighted",
+			fsmBuilder: aaaBuilder,
+			input:      "aaa",
 			expected: `graph LR
 0((0)) --"a"--> 1((1))
 1((1)) --"a"--> 2((2))
@@ -93,11 +113,7 @@ style 3 fill:#00ab41;`,
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			tokens := lex(tt.regex)
-			parser := NewParser()
-			ast := parser.Parse(tokens)
-			state, _ := ast.compile()
-			runner := NewRunner(state)
+			runner := NewRunner(tt.fsmBuilder())
 			for _, char := range tt.input {
 				runner.Next(char)
 				runner.Start()
