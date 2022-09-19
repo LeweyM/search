@@ -5,10 +5,9 @@ import (
 )
 
 func TestCompiledFSM(t *testing.T) {
-	parser := NewParser()
-
 	tokens := lex("abc")
-	ast := parser.Parse(tokens)
+	parser := NewParser(tokens)
+	ast := parser.Parse()
 	startState, _ := ast.compile()
 
 	type test struct {

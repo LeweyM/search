@@ -11,8 +11,8 @@ type debugStep struct {
 
 func NewMyRegex(re string) *myRegex {
 	tokens := lex(re)
-	parser := NewParser()
-	ast := parser.Parse(tokens)
+	parser := NewParser(tokens)
+	ast := parser.Parse()
 	state, _ := ast.compile()
 	return &myRegex{fsm: state}
 }

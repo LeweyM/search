@@ -2,16 +2,17 @@ package v7
 
 type Parser struct {
 	fsmStack []CompositeNode
+	tokens   []token
 }
 
-func NewParser() *Parser {
-	return &Parser{fsmStack: []CompositeNode{}}
+func NewParser(tokens []token) *Parser {
+	return &Parser{fsmStack: []CompositeNode{}, tokens: tokens}
 }
 
-func (p *Parser) Parse(tokens []token) Node {
+func (p *Parser) Parse() Node {
 	p.pushNewGroup()
 
-	for _, t := range tokens {
+	for _, t := range p.tokens {
 		switch t.symbol {
 		case Character:
 			node := p.pop()

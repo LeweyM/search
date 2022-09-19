@@ -44,10 +44,9 @@ func TestParser(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			p := Parser{}
 			tokens := lex(tt.input)
-
-			result := p.Parse(tokens)
+			p := NewParser(tokens)
+			result := p.Parse()
 
 			if !reflect.DeepEqual(result, tt.expectedResult) {
 				t.Fatalf("Expected:\n%+v\n\nGot:\n%+v\n", tt.expectedResult, result)
