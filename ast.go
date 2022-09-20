@@ -99,11 +99,11 @@ func (w WildcardLiteral) compile() (head *State, tail *State) {
 /* Debug methods */
 
 func (g *Group) String() string {
-	return "\n" + g.string(0)
+	return "\n" + g.string(1)
 }
 
 func (b *Branch) String() string {
-	return "\n" + b.string(0)
+	return "\n" + b.string(1)
 }
 
 func (g *Group) string(indentation int) string {
