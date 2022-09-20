@@ -51,6 +51,23 @@ func TestParser(t *testing.T) {
 				}},
 			}},
 		}}},
+		{
+			name:  "zero or more modifier on a character",
+			input: "a*",
+			expectedResult: &Group{ChildNodes: []Node{
+				ZeroOrMoreModifier{Child: CharacterLiteral{Character: 'a'}},
+			}},
+		},
+		{
+			name:  "zero or more modifier on a group",
+			input: "(ab)*",
+			expectedResult: &Group{ChildNodes: []Node{
+				ZeroOrMoreModifier{Child: &Group{ChildNodes: []Node{
+					CharacterLiteral{Character: 'a'},
+					CharacterLiteral{Character: 'b'},
+				}}},
+			}},
+		},
 	}
 
 	for _, tt := range tests {

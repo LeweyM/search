@@ -94,6 +94,10 @@ func TestFSMAgainstGoRegexPkg(t *testing.T) {
 		{"word followed by group", "1(|)", "0"},
 		{"empty group concatenation", "(()0)0", "0"},
 		{"group followed by word", "(|)1", "0"},
+
+		// zero or more
+		{"simple zero or more with 0 '*' matches", "ab*c", "ac"},
+		{"simple zero or more with many '*' matches", "ab*c", "abbbbc"},
 	}
 
 	for _, tt := range tests {
@@ -127,7 +131,7 @@ func FuzzFSM(f *testing.F) {
 	f.Add("ca(t)(s)", "dog")
 
 	f.Fuzz(func(t *testing.T, regex, input string) {
-		if strings.ContainsAny(regex, "[]{}$^*+?\\") {
+		if strings.ContainsAny(regex, "[]{}$^+?\\") {
 			t.Skip()
 		}
 
