@@ -12,18 +12,18 @@ func NewParser(tokens []token) *Parser {
 	}
 }
 
-func (p *Parser) Parse(tokens []token) Node {
+func (p *Parser) Parse() Node {
 	p.pushNewGroup()
 
 	for i, t := range p.tokens {
 		switch t.symbol {
 		case Character:
 			node := p.pop()
-			node.Append(CharacterLiteral{Character: t.letter})
+			node.Append(p.wrapWithModifier(i, CharacterLiteral{Character: t.letter}))
 			p.push(node)
 		case AnyCharacter:
 			node := p.pop()
-			node.Append(WildcardLiteral{})
+			node.Append(p.wrapWithModifier(i, WildcardLiteral{}))
 			p.push(node)
 		case Pipe:
 			node := p.pop()
@@ -39,12 +39,34 @@ func (p *Parser) Parse(tokens []token) Node {
 		case RParen:
 			inner := p.pop()
 			outer := p.pop()
-			outer.Append(inner)
+			outer.Append(p.wrapWithModifier(i, inner))
 			p.push(outer)
 		}
 	}
 
 	return p.pop()
+}
+
+func (p *Parser) peekAhead(i int) (bool, token) {
+	nextIndex := i + 1
+
+	if nextIndex >= len(p.tokens) {
+		return false, token{}
+	}
+
+	return true, p.tokens[nextIndex]
+}
+
+func (p *Parser) wrapWithModifier(i int, child Node) Node {
+	ok, nextToken := p.peekAhead(i)
+	if ok {
+		switch nextToken.symbol {
+		case ZeroOrMore:
+			return ZeroOrMoreModifier{Child: child}
+		}
+	}
+
+	return child
 }
 
 func (p *Parser) pushNewGroup() {

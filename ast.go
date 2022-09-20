@@ -49,6 +49,26 @@ type CharacterLiteral struct {
 
 type WildcardLiteral struct{}
 
+type ZeroOrMoreModifier struct {
+	Child Node
+}
+
+func (z ZeroOrMoreModifier) compile() (head *State, tail *State) {
+	endState := &State{}
+
+	head, tail = z.Child.compile()
+
+	head.addEpsilon(tail)
+	tail.addEpsilon(head)
+
+	tail.addEpsilon(endState)
+	return head, endState
+}
+
+func (z ZeroOrMoreModifier) string(indentation int) string {
+	return compositeToString("ZeroOrMore", []Node{z.Child}, indentation+1)
+}
+
 /* Compiler methods */
 
 func (b *Branch) compile() (head *State, tail *State) {
