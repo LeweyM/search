@@ -12,6 +12,20 @@ type Transition struct {
 	predicate Predicate
 }
 
+func (t Transition) invert() Transition {
+	return Transition{
+		debugSymbol: t.debugSymbol,
+		to:          t.from,
+		from:        t.to,
+		predicate:   t.predicate,
+	}
+}
+
+func (t Transition) From(s *State) Transition {
+	t.from = s
+	return t
+}
+
 type Predicate struct {
 	allowedChars    string
 	disallowedChars string

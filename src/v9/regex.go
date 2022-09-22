@@ -13,7 +13,8 @@ func NewMyRegex(re string) *myRegex {
 	tokens := lex(re)
 	parser := NewParser(tokens)
 	ast := parser.Parse()
-	state, _ := ast.compile()
+	state, tail := ast.compile()
+	tail.setAsSuccess()
 	return &myRegex{fsm: state}
 }
 
@@ -23,7 +24,8 @@ func (m *myRegex) MatchString(input string) bool {
 }
 
 func (m *myRegex) DebugFSM() string {
-	graph, _ := m.fsm.Draw()
+	nodeSet := OrderedSet[*State]{}
+	graph := m.fsm.Draw(&nodeSet)
 	return graph
 }
 
@@ -43,16 +45,17 @@ func (m *myRegex) DebugMatch(input string) []debugStep {
 }
 
 func match(runner *runner, input []rune, debugChan chan debugStep, offset int) bool {
+	nodeSet := &OrderedSet[*State]{}
 	runner.Reset()
 	if debugChan != nil {
-		debugChan <- debugStep{runnerDrawing: runner.drawSnapshot(), currentCharacterIndex: offset}
+		debugChan <- debugStep{runnerDrawing: runner.drawSnapshot(nodeSet), currentCharacterIndex: offset}
 	}
 
 	for i, character := range input {
 		runner.Next(character)
 		runner.Start()
 		if debugChan != nil {
-			debugChan <- debugStep{runnerDrawing: runner.drawSnapshot(), currentCharacterIndex: offset + i + 1}
+			debugChan <- debugStep{runnerDrawing: runner.drawSnapshot(nodeSet), currentCharacterIndex: offset + i + 1}
 		}
 		status := runner.GetStatus()
 

@@ -15,11 +15,31 @@ func Main(args []string) {
 		if len(args) == 2 {
 			RenderFSM(args[1])
 		} else if len(args) == 3 {
-			RenderRunner(args[1], args[2])
+			RenderRunner(args[1], args[2], false)
+		} else if len(args) == 4 && args[3] == "--reduce" {
+			RenderRunner(args[1], args[2], true)
 		}
+
+	case "reduce":
+		RenderReduce(args[1])
 	default:
 		fmt.Println("command not recognized")
 	}
+}
+
+func RenderReduce(input string) {
+	nodeSet := OrderedSet[*State]{}
+
+	fsm := NewMyRegex(input).fsm
+	graph1 := fsm.Draw(&nodeSet)
+
+	reducer := newReducer(fsm)
+	reducer.reduce()
+
+	graph2 := reducer.root.Draw(&nodeSet)
+
+	renderTemplateToBrowser(fsmTemplate, graph1)
+	renderTemplateToBrowser(fsmTemplate, graph2)
 }
 
 func RenderFSM(input string) {
@@ -29,8 +49,11 @@ func RenderFSM(input string) {
 
 // RenderRunner will render every step of the runner until it fails or succeeds. The template will then take care
 // of hiding all but one of the steps to give the illusion of stepping through the input characters.
-func RenderRunner(regex, input string) {
+func RenderRunner(regex, input string, reduce bool) {
 	newMyRegex := NewMyRegex(regex)
+	if reduce {
+		newReducer(newMyRegex.fsm).reduce()
+	}
 	debugSteps := newMyRegex.DebugMatch(input)
 
 	var steps []Step

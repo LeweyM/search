@@ -1,6 +1,7 @@
 package v9
 
 import (
+	"fmt"
 	"regexp"
 	"strings"
 	"testing"
@@ -10,7 +11,8 @@ func TestCompiledFSM(t *testing.T) {
 	tokens := lex("abc")
 	parser := NewParser(tokens)
 	ast := parser.Parse()
-	startState, _ := ast.compile()
+	startState, endState := ast.compile()
+	endState.setAsSuccess()
 
 	type test struct {
 		name           string
@@ -98,11 +100,20 @@ func TestFSMAgainstGoRegexPkg(t *testing.T) {
 		// zero or more
 		{"simple zero or more with 0 '*' matches", "ab*c", "ac"},
 		{"simple zero or more with many '*' matches", "ab*c", "abbbbc"},
+
+		// reduction
+		{"test", "0*0", "0"},
+		//{"test", "0.*1*.000", "00ZBX000A0"},
+		{"test", "(2|0)(1|1)", "01"},
+		{"test", ".", "0"},
+		{"test", "", "0"},
+		//{"test", "(()*(()*(()*(()>>>>>*()*(()*)))*(()/)))", "0"},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			myRegex := NewMyRegex(tt.regex)
+			newReducer(myRegex.fsm).reduce()
 			result := myRegex.MatchString(tt.input)
 
 			goRegexMatch := regexp.MustCompile(tt.regex).MatchString(tt.input)
@@ -140,7 +151,10 @@ func FuzzFSM(f *testing.F) {
 			t.Skip()
 		}
 
-		result := NewMyRegex(regex).MatchString(input)
+		newMyRegex := NewMyRegex(regex)
+		newReducer(newMyRegex.fsm).reduce()
+		result := newMyRegex.MatchString(input)
+
 		goRegexMatch := compiledGoRegex.MatchString(input)
 
 		if result != goRegexMatch {
@@ -154,4 +168,30 @@ func FuzzFSM(f *testing.F) {
 				result)
 		}
 	})
+}
+
+func BenchmarkFsmReduction(b *testing.B) {
+	benchmarks := []struct {
+		regex, name string
+	}{
+		//{name: "simple", regex: "abc"},
+		{name: "complex", regex: "(()*(()*(()*(()>>>>>*()*(()*)))*(()/)))"},
+	}
+	for _, bm := range benchmarks {
+		b.Run(fmt.Sprintf("%s--regex", bm.name), func(b *testing.B) {
+			myRegex := NewMyRegex(bm.regex)
+			fsm := myRegex.fsm
+			reducer := newReducer(fsm)
+			for i := 0; i < b.N; i++ {
+				reducer.reduceState(fsm)
+				//myRegex.MatchString("abc")
+				//myRegex.DebugFSM()
+				//regexp.MustCompile(bm.regex).MatchString("abc")
+			}
+		})
+
+		//b.Run(fmt.Sprintf("%s-go-regex", bm.name), func(b *testing.B) {
+		//	regexp.MustCompile(bm.regex)
+		//})
+	}
 }

@@ -3,12 +3,14 @@ package v9
 type runner struct {
 	head         *State
 	activeStates Set[*State]
+	heads        []*State
 }
 
 func NewRunner(head *State) *runner {
 	r := &runner{
 		head:         head,
-		activeStates: NewSet[*State](head),
+		activeStates: NewSet[*State](connectedStates(head)...),
+		heads:        append(connectedStates(head), head),
 	}
 
 	return r
@@ -30,6 +32,14 @@ func (r *runner) Next(input rune) {
 	r.activeStates = nextActiveStates
 
 	r.advanceEpsilons()
+
+	//// remove isolated nodes
+	//for _, activeState := range r.activeStates.list() {
+	//	if len(activeState.transitions) == 0 && len(activeState.epsilons) == 0 && !activeState.isSuccessState() {
+	//		activeState.delete()
+	//		r.activeStates.remove(activeState)
+	//	}
+	//}
 }
 
 func (r *runner) GetStatus() Status {
@@ -50,12 +60,14 @@ func (r *runner) GetStatus() Status {
 }
 
 func (r *runner) Reset() {
-	r.activeStates = NewSet[*State](r.head)
+	r.activeStates = NewSet(r.heads...)
 	r.advanceEpsilons()
 }
 
 func (r *runner) Start() {
-	r.activeStates.add(r.head)
+	for _, state := range r.heads {
+		r.activateState(state)
+	}
 	r.advanceEpsilons()
 }
 
@@ -68,8 +80,20 @@ func (r *runner) advanceEpsilons() {
 func (r *runner) activateConnectedEpsilons(state *State) {
 	for _, epsilon := range state.epsilons {
 		if !r.activeStates.has(epsilon) {
-			r.activeStates.add(epsilon)
+			r.activateState(epsilon)
 			r.activateConnectedEpsilons(epsilon)
 		}
 	}
+}
+
+func (r *runner) activateState(state *State) {
+	//state.fullyReduceEpsilons3()
+	//// remove isolated nodes
+	//for _, activeState := range r.activeStates.list() {
+	//	if len(activeState.transitions) == 0 && len(activeState.epsilons) == 0 && !activeState.isSuccessState() {
+	//		activeState.delete()
+	//		r.activeStates.remove(activeState)
+	//	}
+	//}
+	r.activeStates.add(state)
 }

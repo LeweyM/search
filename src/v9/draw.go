@@ -6,13 +6,12 @@ import (
 	"strings"
 )
 
-func (s *State) Draw() (graph string, nodeSet OrderedSet[*State]) {
+func (s *State) Draw(nodeSet *OrderedSet[*State]) (graph string) {
 	// initialize sets
 	transitionSet := OrderedSet[Transition]{}
-	nodeSet = OrderedSet[*State]{}
 
 	// collect transitions
-	visitNodes(s, &transitionSet, &nodeSet)
+	visitNodes(s, &transitionSet, nodeSet, &OrderedSet[*State]{})
 
 	output := []string{
 		"graph LR",
@@ -28,12 +27,20 @@ func (s *State) Draw() (graph string, nodeSet OrderedSet[*State]) {
 			output = append(output, fmt.Sprintf("%d((%d)) --\"%s\"--> %d((%d))", fromId, fromId, t.debugSymbol, toId, toId))
 		}
 	}
-	return strings.Join(output, "\n"), nodeSet
+
+	for _, state := range nodeSet.list() {
+		if state.isSuccessState() {
+			output = append(output, fmt.Sprintf("style %d stroke:green,stroke-width:4px;", nodeSet.getIndex(state)))
+		}
+	}
+
+	return strings.Join(output, "\n")
 }
 
 func visitNodes(
 	node *State,
 	transitions *OrderedSet[Transition],
+	nodes *OrderedSet[*State],
 	visited *OrderedSet[*State],
 ) {
 	// 1. If the current node has already been visited, stop.
@@ -57,25 +64,26 @@ func visitNodes(
 
 	// 3. Mark the current node as visited.
 	visited.add(node)
+	nodes.add(node)
 
 	// 4.i. Recur on every epsilon.
 	for _, epsilon := range node.epsilons {
-		visitNodes(epsilon, transitions, visited)
+		visitNodes(epsilon, transitions, nodes, visited)
 	}
 	// 4. Recur on the destination node of every outgoing transition.
 	for _, transition := range node.transitions {
 		destinationNode := transition.to
-		visitNodes(destinationNode, transitions, visited)
+		visitNodes(destinationNode, transitions, nodes, visited)
 	}
-	// 5. Recur on the source node of every incoming transition.
-	for _, sourceNode := range node.incoming {
-		visitNodes(sourceNode, transitions, visited)
-	}
+	//// 5. Recur on the source node of every incoming transition.
+	//for _, sourceNode := range node.incoming {
+	//	visitNodes(sourceNode, transitions, nodes, visited)
+	//}
 }
 
 // drawSnapshot will draw a mermaid graph from the FSM, as well as color the active nodes.
-func (r runner) drawSnapshot() string {
-	graph, nodeSet := r.head.Draw()
+func (r runner) drawSnapshot(nodeSet *OrderedSet[*State]) string {
+	graph := r.head.Draw(nodeSet)
 	activeStates := getSortedActiveStates(r.activeStates.list(), nodeSet)
 
 	for _, state := range activeStates {
@@ -90,7 +98,7 @@ func (r runner) drawSnapshot() string {
 	return graph
 }
 
-func getSortedActiveStates(activeStates []*State, nodeSet OrderedSet[*State]) []*State {
+func getSortedActiveStates(activeStates []*State, nodeSet *OrderedSet[*State]) []*State {
 	byAscendingNodeLabel := func(i, j int) bool {
 		return nodeSet.getIndex(activeStates[i]) < nodeSet.getIndex(activeStates[j])
 	}
