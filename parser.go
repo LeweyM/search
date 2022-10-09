@@ -61,6 +61,10 @@ func (p *Parser) wrapWithModifier(i int, child Node) Node {
 	ok, nextToken := p.peekAhead(i)
 	if ok {
 		switch nextToken.symbol {
+		case ZeroOrOne:
+			return ZeroOrOneModifier{Child: child}
+		case OneOrMore:
+			return OneOrMoreModifier{Child: child}
 		case ZeroOrMore:
 			return ZeroOrMoreModifier{Child: child}
 		}

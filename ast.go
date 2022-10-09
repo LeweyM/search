@@ -49,14 +49,58 @@ type CharacterLiteral struct {
 
 type WildcardLiteral struct{}
 
+type ZeroOrOneModifier struct {
+	Child Node
+}
+
+type OneOrMoreModifier struct {
+	Child Node
+}
+
 type ZeroOrMoreModifier struct {
 	Child Node
 }
 
-func (z ZeroOrMoreModifier) compile() (head *State, tail *State) {
+func (zo ZeroOrOneModifier) string(indentation int) string {
+	return compositeToString("ZeroOrOne", []Node{zo.Child}, indentation+1)
+}
+
+func (om OneOrMoreModifier) string(indentation int) string {
+	return compositeToString("OneOrMore", []Node{om.Child}, indentation+1)
+}
+
+func (zm ZeroOrMoreModifier) string(indentation int) string {
+	return compositeToString("ZeroOrMore", []Node{zm.Child}, indentation+1)
+}
+
+/* Compiler methods */
+
+func (zo ZeroOrOneModifier) compile() (head *State, tail *State) {
 	endState := &State{}
 
-	head, tail = z.Child.compile()
+	head, tail = zo.Child.compile()
+
+	head.addEpsilon(tail)
+
+	tail.addEpsilon(endState)
+	return head, endState
+}
+
+func (om OneOrMoreModifier) compile() (head *State, tail *State) {
+	endState := &State{}
+
+	head, tail = om.Child.compile()
+
+	tail.addEpsilon(head)
+
+	tail.addEpsilon(endState)
+	return head, endState
+}
+
+func (zm ZeroOrMoreModifier) compile() (head *State, tail *State) {
+	endState := &State{}
+
+	head, tail = zm.Child.compile()
 
 	head.addEpsilon(tail)
 	tail.addEpsilon(head)
@@ -64,12 +108,6 @@ func (z ZeroOrMoreModifier) compile() (head *State, tail *State) {
 	tail.addEpsilon(endState)
 	return head, endState
 }
-
-func (z ZeroOrMoreModifier) string(indentation int) string {
-	return compositeToString("ZeroOrMore", []Node{z.Child}, indentation+1)
-}
-
-/* Compiler methods */
 
 func (b *Branch) compile() (head *State, tail *State) {
 	startState := &State{}

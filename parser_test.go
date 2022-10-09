@@ -52,6 +52,39 @@ func TestParser(t *testing.T) {
 			}},
 		}}},
 		{
+			name:  "zero or one modifier on a character",
+			input: "a?",
+			expectedResult: &Group{ChildNodes: []Node{
+				ZeroOrOneModifier{Child: CharacterLiteral{Character: 'a'}},
+			}},
+		},
+		{
+			name:  "zero or one modifier on a group",
+			input: "(ab)?",
+			expectedResult: &Group{ChildNodes: []Node{
+				ZeroOrOneModifier{Child: &Group{ChildNodes: []Node{
+					CharacterLiteral{Character: 'a'},
+					CharacterLiteral{Character: 'b'},
+				}}},
+			}},
+		},
+		{
+			name:  "one or more modifier on a character",
+			input: "a+",
+			expectedResult: &Group{ChildNodes: []Node{
+				OneOrMoreModifier{Child: CharacterLiteral{Character: 'a'}},
+			}},
+		},
+		{
+			name:  "one or more modifier on a group",
+			input: "(ab)+",
+			expectedResult: &Group{ChildNodes: []Node{
+				OneOrMoreModifier{Child: &Group{ChildNodes: []Node{
+					CharacterLiteral{Character: 'a'},
+					CharacterLiteral{Character: 'b'},
+				}}},
+			}},
+		}, {
 			name:  "zero or more modifier on a character",
 			input: "a*",
 			expectedResult: &Group{ChildNodes: []Node{
