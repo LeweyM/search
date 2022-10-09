@@ -95,8 +95,19 @@ func TestFSMAgainstGoRegexPkg(t *testing.T) {
 		{"empty group concatenation", "(()0)0", "0"},
 		{"group followed by word", "(|)1", "0"},
 
+		// zero or one
+		{"simple zero or one with 0 '?' match", "ab?c", "ac"},
+		{"simple zero or one with one '?' matches", "ab?c", "abc"},
+		{"simple zero or one too many '?' matches", "ab?c", "abbc"},
+
+		// one or more
+		{"simple one or more with 0 '+' matches", "ab+c", "ac"},
+		{"simple one or more with one '+' matches", "ab+c", "abc"},
+		{"simple one or more with many '+' matches", "ab+c", "abbbbc"},
+
 		// zero or more
 		{"simple zero or more with 0 '*' matches", "ab*c", "ac"},
+		{"simple zero or more with one '*' matches", "ab*c", "abc"},
 		{"simple zero or more with many '*' matches", "ab*c", "abbbbc"},
 	}
 
@@ -132,6 +143,11 @@ func FuzzFSM(f *testing.F) {
 
 	f.Fuzz(func(t *testing.T, regex, input string) {
 		if strings.ContainsAny(regex, "[]{}$^\\") {
+			t.Skip()
+		}
+
+		if strings.Contains(regex, "(?") {
+			// '?' on its own is used for special group constructs, which we're not implementing.
 			t.Skip()
 		}
 

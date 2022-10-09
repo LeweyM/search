@@ -76,37 +76,50 @@ func (zm ZeroOrMoreModifier) string(indentation int) string {
 /* Compiler methods */
 
 func (zo ZeroOrOneModifier) compile() (head *State, tail *State) {
+	startState := &State{}
 	endState := &State{}
 
 	head, tail = zo.Child.compile()
 
-	head.addEpsilon(tail)
+	// 'one' case, go through expression as normal
+	startState.addEpsilon(head)
+	// 'zero' case, skip to end of expression
+	startState.addEpsilon(tail)
 
 	tail.addEpsilon(endState)
-	return head, endState
+	return startState, endState
 }
 
 func (om OneOrMoreModifier) compile() (head *State, tail *State) {
+	startState := &State{}
 	endState := &State{}
 
 	head, tail = om.Child.compile()
 
-	tail.addEpsilon(head)
+	// 'one' case, go through expression as normal
+	startState.addEpsilon(head)
+	// 'more' case, loop back through the expression
+	tail.addEpsilon(startState)
 
 	tail.addEpsilon(endState)
-	return head, endState
+	return startState, endState
 }
 
 func (zm ZeroOrMoreModifier) compile() (head *State, tail *State) {
+	startState := &State{}
 	endState := &State{}
 
 	head, tail = zm.Child.compile()
 
-	head.addEpsilon(tail)
-	tail.addEpsilon(head)
+	// 'one' case, go through expression as normal
+	startState.addEpsilon(head)
+	// 'more' case, loop back through the expression
+	tail.addEpsilon(startState)
+	// 'zero' case, skip to end of expression
+	startState.addEpsilon(tail)
 
 	tail.addEpsilon(endState)
-	return head, endState
+	return startState, endState
 }
 
 func (b *Branch) compile() (head *State, tail *State) {
