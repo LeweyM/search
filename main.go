@@ -7,6 +7,7 @@ import (
 	"os"
 	"search/src/search"
 	"search/src/trigram"
+	v10 "search/src/v10"
 	v5 "search/src/v5"
 	v6 "search/src/v6"
 	v7 "search/src/v7"
@@ -36,6 +37,9 @@ func main() {
 		return
 	case "v9":
 		v9.Main(os.Args[2:])
+		return
+	case "v10":
+		v10.Main(os.Args[2:])
 		return
 	}
 
