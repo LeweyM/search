@@ -1,10 +1,10 @@
-module search
+module github.com/leweyM/search
 
 go 1.18
 
 require (
 	github.com/pkg/browser v0.0.0-20210911075715-681adbf594b8
-	golang.org/x/crypto v0.0.0-20220112180741-5e0467b6c7ce
+	golang.org/x/crypto v0.0.0-20221012134737-56aed061732a
 )
 
 require (
