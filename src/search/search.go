@@ -2,9 +2,9 @@ package search
 
 import (
 	"context"
+	finite_state_machine "github.com/leweyM/search/src/finite-state-machine"
 	"os"
 	"path/filepath"
-	finite_state_machine "search/src/finite-state-machine"
 	"strings"
 )
 

@@ -4,9 +4,9 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	"github.com/leweyM/search/src/search"
+	"github.com/leweyM/search/src/trigram"
 	"os/exec"
-	"search/src/search"
-	"search/src/trigram"
 	"strconv"
 	"strings"
 )

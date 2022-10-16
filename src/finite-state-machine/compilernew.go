@@ -2,8 +2,8 @@ package finite_state_machine
 
 import (
 	"fmt"
+	"github.com/leweyM/search/src/ast"
 	"reflect"
-	"search/src/ast"
 )
 
 type compilableAst interface {
