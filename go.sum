@@ -1,3 +1,5 @@
+github.com/leweyM/search v0.0.0-20221016114213-7efa75e7d6ca h1:XSDSZ8PKnc6lnnPXaxdbfQKTBEEpbx6Ry9uhhUFAD1Q=
+github.com/leweyM/search v0.0.0-20221016114213-7efa75e7d6ca/go.mod h1:4ZowEDqxlAWc5rlPlEbddVqT1x7KbuYjx3dcAFmCMK8=
 github.com/pkg/browser v0.0.0-20210911075715-681adbf594b8 h1:KoWmjvw+nsYOo29YJK9vDA65RGE3NrOnUtO7a+RF9HU=
 github.com/pkg/browser v0.0.0-20210911075715-681adbf594b8/go.mod h1:HKlIX3XHQyzLZPlr7++PzdhaXEj94dEiJgZDTsxEqUI=
 golang.org/x/crypto v0.0.0-20221012134737-56aed061732a h1:NmSIgad6KjE6VvHciPZuNRTKxGhlPfD6OA87W/PLkqg=

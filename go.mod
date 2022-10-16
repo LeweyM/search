@@ -1,8 +1,9 @@
-module github.com/leweyM/search
+module github.com/LeweyM/search
 
 go 1.18
 
 require (
+	github.com/leweyM/search v0.0.0-20221016114213-7efa75e7d6ca
 	github.com/pkg/browser v0.0.0-20210911075715-681adbf594b8
 	golang.org/x/crypto v0.0.0-20221012134737-56aed061732a
 )
