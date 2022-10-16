@@ -53,7 +53,7 @@ func OutputRunnerToFile(regex, input, filePath string) {
 }
 
 func buildFsmHtml(graph string) string {
-	return renderWithTemplate(runnerTemplate, graph)
+	return renderWithTemplate(fsmTemplate, graph)
 }
 
 func buildRunnerHTML(data TemplateData) string {
