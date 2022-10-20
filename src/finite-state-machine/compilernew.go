@@ -2,7 +2,7 @@ package finite_state_machine
 
 import (
 	"fmt"
-	"github.com/leweyM/search/src/ast"
+	"github.com/LeweyM/search/src/ast"
 	"reflect"
 )
 
