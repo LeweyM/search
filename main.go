@@ -2,7 +2,6 @@ package v7
 
 import (
 	"bytes"
-	"fmt"
 	"github.com/pkg/browser"
 	"html/template"
 	"os"
@@ -24,7 +23,7 @@ func Main(args []string) {
 			OutputRunnerToFile(args[1], args[2], args[3])
 		}
 	default:
-		fmt.Println("command not recognized")
+		panic("command not recognized")
 	}
 }
 
