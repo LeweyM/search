@@ -75,10 +75,6 @@ func visitNodes(
 		destinationNode := transition.to
 		visitNodes(destinationNode, transitions, visited)
 	}
-	// 5. Recur on the source node of every incoming transition.
-	for _, sourceNode := range node.incoming {
-		visitNodes(sourceNode, transitions, visited)
-	}
 }
 
 // drawSnapshot will draw a mermaid graph from the FSM, as well as color the active nodes.
