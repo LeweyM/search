@@ -24,6 +24,14 @@ func (s *State) Draw() (graph string, nodeSet OrderedSet[*State]) {
 		toId := nodeSet.getIndex(t.to)
 		output = append(output, fmt.Sprintf("%d((%d)) --\"%s\"--> %d((%d))", fromId, fromId, t.debugSymbol, toId, toId))
 	}
+
+	// draw outline around success nodes
+	for _, state := range nodeSet.list() {
+		if state.isSuccessState() {
+			output = append(output, fmt.Sprintf("style %d stroke:green,stroke-width:4px;", nodeSet.getIndex(state)))
+		}
+	}
+
 	return strings.Join(output, "\n"), nodeSet
 }
 
