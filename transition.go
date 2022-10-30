@@ -6,10 +6,9 @@ import (
 
 type Transition struct {
 	debugSymbol string
-	// to: a pointer to the next state
-	to        *State
-	from      *State
-	predicate Predicate
+	to          *State
+	from        *State
+	predicate   Predicate
 }
 
 type Predicate struct {
