@@ -1,7 +1,5 @@
 package v4
 
-import "fmt"
-
 type Status string
 
 const (
@@ -22,7 +20,6 @@ type Transition struct {
 type State struct {
 	id          int
 	transitions []Transition
-	incoming    []*State
 }
 
 func (s *State) firstMatchingTransition(input rune) *State {
@@ -50,18 +47,19 @@ func (s *State) addTransition(destination *State, predicate Predicate) {
 		predicate: predicate,
 	}
 	s.transitions = append(s.transitions, t)
-	destination.incoming = append(destination.incoming, s)
 }
 
 // adds the transitions of other State (s2) to this State (s).
-//
-// warning: do not use if State s2 has any incoming transitions.
 func (s *State) merge(s2 *State) {
-	if len(s2.incoming) != 0 {
-		panic(fmt.Sprintf("State (%+v) cannot be merged if it has any incoming transitions. It has incoming transitions from the following states; %+v", *s2, s.incoming))
-	}
-
 	for _, t := range s2.transitions {
+		// 1. copy s2 transitions to s
 		s.addTransition(t.to, t.predicate)
 	}
+
+	// 2. remove s2
+	s2.delete()
+}
+
+func (s *State) delete() {
+	s.transitions = nil
 }
