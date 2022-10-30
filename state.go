@@ -8,17 +8,7 @@ const (
 	Normal         = "normal"
 )
 
-type Predicate func(input rune) bool
-
-type Transition struct {
-	// to: a pointer to the next state
-	to *State
-	// predicate: a function to determine if the runner should move to the next state
-	predicate Predicate
-}
-
 type State struct {
-	id          int
 	transitions []Transition
 }
 
@@ -44,6 +34,7 @@ func (s *State) isSuccessState() bool {
 func (s *State) addTransition(destination *State, predicate Predicate) {
 	t := Transition{
 		to:        destination,
+		from:      s,
 		predicate: predicate,
 	}
 	s.transitions = append(s.transitions, t)
