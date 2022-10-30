@@ -2,9 +2,10 @@ package v10
 
 import (
 	"bytes"
-	"fmt"
 	"github.com/pkg/browser"
 	"html/template"
+	"os"
+	"path/filepath"
 	"strings"
 )
 
@@ -17,19 +18,48 @@ func Main(args []string) {
 		} else if len(args) == 3 {
 			RenderRunner(args[1], args[2])
 		}
+	case "out":
+		if len(args) == 4 {
+			OutputRunnerToFile(args[1], args[2], args[3])
+		}
 	default:
-		fmt.Println("command not recognized")
+		panic("command not recognized")
 	}
 }
 
+// RenderFSM will render just the finite state machine, and output the result to the browser
 func RenderFSM(input string) {
 	graph := NewMyRegex(input).DebugFSM()
-	renderTemplateToBrowser(fsmTemplate, graph)
+	html := buildFsmHtml(graph)
+	outputToBrowser(html)
 }
 
 // RenderRunner will render every step of the runner until it fails or succeeds. The template will then take care
-// of hiding all but one of the steps to give the illusion of stepping through the input characters.
+// of hiding all but one of the steps to give the illusion of stepping through the input characters. It will
+// then output the result to the browser.
 func RenderRunner(regex, input string) {
+	data := buildRunnerTemplateData(regex, input)
+	htmlRunner := buildRunnerHTML(data)
+	outputToBrowser(htmlRunner)
+}
+
+// OutputRunnerToFile will render every step of the runner, the same as RenderRunner, and then write the html to
+// a file.
+func OutputRunnerToFile(regex, input, filePath string) {
+	data := buildRunnerTemplateData(regex, input)
+	htmlRunner := buildRunnerHTML(data)
+	outputToFile(htmlRunner, filePath)
+}
+
+func buildFsmHtml(graph string) string {
+	return renderWithTemplate(fsmTemplate, graph)
+}
+
+func buildRunnerHTML(data TemplateData) string {
+	return renderWithTemplate(runnerTemplate, data)
+}
+
+func buildRunnerTemplateData(regex string, input string) TemplateData {
 	newMyRegex := NewMyRegex(regex)
 	debugSteps := newMyRegex.DebugMatch(input)
 
@@ -41,13 +71,35 @@ func RenderRunner(regex, input string) {
 		})
 	}
 
-	renderTemplateToBrowser(runnerTemplate, TemplateData{
+	data := TemplateData{
 		Steps: steps,
 		Regex: regex,
-	})
+	}
+	return data
 }
 
-func renderTemplateToBrowser(tmplt string, data any) {
+func outputToFile(html, path string) {
+	containingDir := filepath.Dir(path)
+	err := os.MkdirAll(containingDir, 0750)
+	if err != nil {
+		panic(err)
+	}
+
+	if filepath.Ext(path) == "" {
+		path += ".html"
+	}
+
+	if filepath.Ext(path) != ".html" {
+		panic("only .html extension permitted")
+	}
+
+	err = os.WriteFile(path, []byte(html), 0750)
+	if err != nil {
+		panic(err)
+	}
+}
+
+func renderWithTemplate(tmplt string, data any) string {
 	t, err := template.New("graph").Parse(tmplt)
 	if err != nil {
 		panic(err)
@@ -57,13 +109,15 @@ func renderTemplateToBrowser(tmplt string, data any) {
 	if err != nil {
 		panic(err)
 	}
+	return w.String()
+}
 
-	reader := strings.NewReader(w.String())
-	err = browser.OpenReader(reader)
+func outputToBrowser(html string) {
+	reader := strings.NewReader(html)
+	err := browser.OpenReader(reader)
 	if err != nil {
 		panic(err)
 	}
-	return
 }
 
 // threeSplitString divides a string into three pieces on a given index
