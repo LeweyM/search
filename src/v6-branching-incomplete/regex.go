@@ -55,6 +55,10 @@ func match(runner *runner, input []rune, debugChan chan debugStep, offset int) b
 		}
 		status := runner.GetStatus()
 
+		if status == Fail {
+			return match(runner, input[1:], debugChan, offset+1)
+		}
+
 		if status == Success {
 			return true
 		}
