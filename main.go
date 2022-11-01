@@ -12,6 +12,7 @@ import (
 	v6ParallelIncomplete "github.com/LeweyM/search/src/v6-parallel-incomplete"
 	v7 "github.com/LeweyM/search/src/v7"
 	v8 "github.com/LeweyM/search/src/v8"
+	v8EpsilonConcatenation "github.com/LeweyM/search/src/v8-with-epsilon-concatenation"
 	v9 "github.com/LeweyM/search/src/v9"
 	"io"
 	"os"
@@ -42,6 +43,9 @@ func main() {
 		return
 	case "v8":
 		v8.Main(os.Args[2:])
+		return
+	case "v8-with-epsilon-concatenation":
+		v8EpsilonConcatenation.Main(os.Args[2:])
 		return
 	case "v9":
 		v9.Main(os.Args[2:])
