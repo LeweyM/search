@@ -8,6 +8,7 @@ import (
 	v10 "github.com/LeweyM/search/src/v10"
 	v5 "github.com/LeweyM/search/src/v5"
 	v6 "github.com/LeweyM/search/src/v6"
+	v6BranchingIncomplete "github.com/LeweyM/search/src/v6-branching-incomplete"
 	v7 "github.com/LeweyM/search/src/v7"
 	v8 "github.com/LeweyM/search/src/v8"
 	v9 "github.com/LeweyM/search/src/v9"
@@ -28,6 +29,9 @@ func main() {
 		return
 	case "v6":
 		v6.Main(os.Args[2:])
+		return
+	case "v6-branching-incomplete":
+		v6BranchingIncomplete.Main(os.Args[2:])
 		return
 	case "v7":
 		v7.Main(os.Args[2:])
