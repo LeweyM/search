@@ -9,6 +9,7 @@ import (
 	v5 "github.com/LeweyM/search/src/v5"
 	v6 "github.com/LeweyM/search/src/v6"
 	v6BranchingIncomplete "github.com/LeweyM/search/src/v6-branching-incomplete"
+	v6ParallelIncomplete "github.com/LeweyM/search/src/v6-parallel-incomplete"
 	v7 "github.com/LeweyM/search/src/v7"
 	v8 "github.com/LeweyM/search/src/v8"
 	v9 "github.com/LeweyM/search/src/v9"
@@ -33,6 +34,9 @@ func main() {
 	case "v6-branching-incomplete":
 		v6BranchingIncomplete.Main(os.Args[2:])
 		return
+	case "v6-parallel-incomplete":
+		v6ParallelIncomplete.Main(os.Args[2:])
+		return
 	case "v7":
 		v7.Main(os.Args[2:])
 		return
@@ -45,6 +49,8 @@ func main() {
 	case "v10":
 		v10.Main(os.Args[2:])
 		return
+	default:
+		panic(fmt.Sprintf("command '%s' not found", strings.Join(os.Args[1:], " ")))
 	}
 
 	//input := make(chan string)
