@@ -12,7 +12,7 @@ type Step struct {
 }
 
 const fsmTemplate = `
-<script src="https://cdn.jsdelivr.net/npm/mermaid/dist/mermaid.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/mermaid@9.1.7/dist/mermaid.min.js"></script>
 <script>mermaid.initialize({startOnLoad:true});
 </script>
 <div class="mermaid">
@@ -24,7 +24,7 @@ const fsmTemplate = `
 `
 
 const runnerTemplate = `
-<script src="https://cdn.jsdelivr.net/npm/mermaid/dist/mermaid.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/mermaid@9.1.7/dist/mermaid.min.js"></script>
 <script>mermaid.initialize({startOnLoad:true});</script>
 <body onload="prev()" style="text-align:center;margin:3vw;overflow: hidden">
 
