@@ -11,6 +11,7 @@ func abcBuilder() *State {
 	state1.addTransition(state2, Predicate{allowedChars: "a"}, "a")
 	state2.addTransition(state3, Predicate{allowedChars: "b"}, "b")
 	state3.addTransition(state4, Predicate{allowedChars: "c"}, "c")
+	state4.SetSuccess()
 	return state1
 }
 
@@ -20,6 +21,7 @@ func aaaBuilder() *State {
 	state1.addTransition(state2, Predicate{allowedChars: "a"}, "a")
 	state2.addTransition(state3, Predicate{allowedChars: "a"}, "a")
 	state3.addTransition(state4, Predicate{allowedChars: "a"}, "a")
+	state4.SetSuccess()
 	return state1
 }
 
@@ -29,6 +31,7 @@ func aεbBuilder() *State {
 	state1.addTransition(state2, Predicate{allowedChars: "a"}, "a")
 	state2.addEpsilon(state3)
 	state3.addTransition(state4, Predicate{allowedChars: "b"}, "b")
+	state4.SetSuccess()
 	return state1
 }
 

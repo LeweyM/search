@@ -9,18 +9,25 @@ import (
 	"strings"
 )
 
+type FlagSet map[CmdFlag]bool
+type CmdFlag string
+
+const reduceEpsilon CmdFlag = "reduce-epsilon"
+
 // Main just used for linking up the main functions
 func Main(args []string) {
+	args, flags := parseArgumentsAndFlags(args)
+
 	switch args[0] {
 	case "draw":
 		if len(args) == 2 {
-			RenderFSM(args[1])
+			RenderFSM(args[1], flags)
 		} else if len(args) == 3 {
-			RenderRunner(args[1], args[2])
+			RenderRunner(args[1], args[2], flags)
 		}
 	case "out":
 		if len(args) == 4 {
-			OutputRunnerToFile(args[1], args[2], args[3])
+			OutputRunnerToFile(args[1], args[2], args[3], flags)
 		}
 	default:
 		panic("command not recognized")
@@ -28,8 +35,13 @@ func Main(args []string) {
 }
 
 // RenderFSM will render just the finite state machine, and output the result to the browser
-func RenderFSM(input string) {
-	graph := NewMyRegex(input).DebugFSM()
+func RenderFSM(input string, flags FlagSet) {
+	reducers := []Reducer{}
+	if flags[reduceEpsilon] {
+		reducers = append(reducers, &epsilonReducer{})
+	}
+
+	graph := NewMyRegex(input, reducers...).DebugFSM()
 	html := buildFsmHtml(graph)
 	outputToBrowser(html)
 }
@@ -37,16 +49,17 @@ func RenderFSM(input string) {
 // RenderRunner will render every step of the runner until it fails or succeeds. The template will then take care
 // of hiding all but one of the steps to give the illusion of stepping through the input characters. It will
 // then output the result to the browser.
-func RenderRunner(regex, input string) {
-	data := buildRunnerTemplateData(regex, input)
+func RenderRunner(regex, input string, flags FlagSet) {
+	reducers := getReducersFromFlags(flags)
+	data := buildRunnerTemplateData(regex, input, reducers)
 	htmlRunner := buildRunnerHTML(data)
 	outputToBrowser(htmlRunner)
 }
 
 // OutputRunnerToFile will render every step of the runner, the same as RenderRunner, and then write the html to
 // a file.
-func OutputRunnerToFile(regex, input, filePath string) {
-	data := buildRunnerTemplateData(regex, input)
+func OutputRunnerToFile(regex, input, filePath string, flags FlagSet) {
+	data := buildRunnerTemplateData(regex, input, getReducersFromFlags(flags))
 	htmlRunner := buildRunnerHTML(data)
 	outputToFile(htmlRunner, filePath)
 }
@@ -59,8 +72,8 @@ func buildRunnerHTML(data TemplateData) string {
 	return renderWithTemplate(runnerTemplate, data)
 }
 
-func buildRunnerTemplateData(regex string, input string) TemplateData {
-	newMyRegex := NewMyRegex(regex)
+func buildRunnerTemplateData(regex string, input string, reducers []Reducer) TemplateData {
+	newMyRegex := NewMyRegex(regex, reducers...)
 	debugSteps := newMyRegex.DebugMatch(input)
 
 	var steps []Step
@@ -76,6 +89,18 @@ func buildRunnerTemplateData(regex string, input string) TemplateData {
 		Regex: regex,
 	}
 	return data
+}
+
+func getReducersFromFlags(flags FlagSet) []Reducer {
+	var reducers []Reducer
+
+	for flag := range flags {
+		switch flag {
+		case reduceEpsilon:
+			reducers = append(reducers, &epsilonReducer{})
+		}
+	}
+	return reducers
 }
 
 func outputToFile(html, path string) {
@@ -97,6 +122,20 @@ func outputToFile(html, path string) {
 	if err != nil {
 		panic(err)
 	}
+}
+
+func parseArgumentsAndFlags(args []string) ([]string, FlagSet) {
+	flagSet := make(FlagSet)
+	var arguments = []string{}
+	for _, arg := range args {
+		switch arg {
+		case "--reduce-epsilons":
+			flagSet[reduceEpsilon] = true
+		default:
+			arguments = append(arguments, arg)
+		}
+	}
+	return arguments, flagSet
 }
 
 func renderWithTemplate(tmplt string, data any) string {

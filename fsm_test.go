@@ -1,6 +1,7 @@
 package v10
 
 import (
+	"fmt"
 	"regexp"
 	"strings"
 	"testing"
@@ -112,24 +113,14 @@ func TestFSMAgainstGoRegexPkg(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			myRegex := NewMyRegex(tt.regex)
-			result := myRegex.MatchString(tt.input)
+		t.Run(fmt.Sprintf("without reducers - %s", tt.name), func(t *testing.T) {
+			compareWithGoStdLib(t, NewMyRegex(tt.regex), tt.regex, tt.input)
+		})
+	}
 
-			goRegexMatch := regexp.MustCompile(tt.regex).MatchString(tt.input)
-			t.Logf("Compiled state machine:\n%v\n", myRegex.DebugFSM())
-
-			if result != goRegexMatch {
-				t.Fatalf(
-					"Mismatch - \nRegex: '%s' (as bytes: %x), \nInput: '%s' (as bytes: %x) \n-> \nGo Regex Pkg: '%t', \nOur regex result: '%v'",
-					tt.regex,
-					[]byte(tt.regex),
-					tt.input,
-					[]byte(tt.input),
-					goRegexMatch,
-					result,
-				)
-			}
+	for _, tt := range tests {
+		t.Run(fmt.Sprintf("with epsilon reducer - %s", tt.name), func(t *testing.T) {
+			compareWithGoStdLib(t, NewMyRegex(tt.regex, &epsilonReducer{}), tt.regex, tt.input)
 		})
 	}
 }
@@ -151,23 +142,29 @@ func FuzzFSM(f *testing.F) {
 			t.Skip()
 		}
 
-		compiledGoRegex, err := regexp.Compile(regex)
+		_, err := regexp.Compile(regex)
 		if err != nil {
 			t.Skip()
 		}
-
-		result := NewMyRegex(regex).MatchString(input)
-		goRegexMatch := compiledGoRegex.MatchString(input)
-
-		if result != goRegexMatch {
-			t.Fatalf(
-				"Mismatch - \nRegex: '%s' (as bytes: %x), \nInput: '%s' (as bytes: %x) \n-> \nGo Regex Pkg: '%t', \nOur regex result: '%v'",
-				regex,
-				[]byte(regex),
-				input,
-				[]byte(input),
-				goRegexMatch,
-				result)
-		}
+		compareWithGoStdLib(t, NewMyRegex(regex, &epsilonReducer{}), regex, input)
 	})
+}
+
+func compareWithGoStdLib(t *testing.T, myRegex *myRegex, regex, input string) {
+	t.Helper()
+
+	result := myRegex.MatchString(input)
+	goRegexMatch := regexp.MustCompile(regex).MatchString(input)
+
+	if result != goRegexMatch {
+		t.Fatalf(
+			"Mismatch - \nRegex: '%s' (as bytes: %x), \nInput: '%s' (as bytes: %x) \n-> \nGo Regex Pkg: '%t', \nOur regex result: '%v'",
+			regex,
+			[]byte(regex),
+			input,
+			[]byte(input),
+			goRegexMatch,
+			result,
+		)
+	}
 }
