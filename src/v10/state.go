@@ -25,11 +25,7 @@ func (s *State) matchingTransitions(input rune) []*State {
 }
 
 func (s *State) isSuccessState() bool {
-	if len(s.transitions) == 0 && len(s.epsilons) == 0 {
-		return true
-	}
-
-	return false
+	return s.success
 }
 
 // helper function to add a transition to State.
@@ -61,4 +57,25 @@ func (s *State) merge(s2 *State) {
 func (s *State) delete() {
 	s.transitions = nil
 	s.epsilons = nil
+}
+
+func (s *State) SetSuccess() {
+	s.success = true
+}
+
+func (s *State) getEpsilonClosure() Set[*State] {
+	set := NewSet[*State](s)
+
+	s.traverseEpsilons(set)
+
+	return set
+}
+
+func (s *State) traverseEpsilons(states Set[*State]) {
+	for _, state := range s.epsilons {
+		if !states.has(state) {
+			states.add(state)
+			state.traverseEpsilons(states)
+		}
+	}
 }

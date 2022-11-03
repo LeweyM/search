@@ -1,5 +1,9 @@
 package v10
 
+type Reducer interface {
+	reduce(s *State)
+}
+
 type myRegex struct {
 	fsm *State
 }
@@ -9,11 +13,16 @@ type debugStep struct {
 	currentCharacterIndex int
 }
 
-func NewMyRegex(re string) *myRegex {
+func NewMyRegex(re string, reducers ...Reducer) *myRegex {
 	tokens := lex(re)
 	parser := NewParser(tokens)
 	ast := parser.Parse()
-	state, _ := ast.compile()
+	state, endState := ast.compile()
+	endState.SetSuccess()
+	for _, reducer := range reducers {
+		reducer.reduce(state)
+	}
+
 	return &myRegex{fsm: state}
 }
 
