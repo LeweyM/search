@@ -2,6 +2,7 @@ package v10
 
 import (
 	"bytes"
+	"fmt"
 	"github.com/pkg/browser"
 	"html/template"
 	"os"
@@ -9,7 +10,6 @@ import (
 	"strings"
 )
 
-type FlagSet map[CmdFlag]bool
 type CmdFlag string
 
 const reduceEpsilon CmdFlag = "reduce-epsilon"
@@ -35,7 +35,7 @@ func Main(args []string) {
 }
 
 // RenderFSM will render just the finite state machine, and output the result to the browser
-func RenderFSM(input string, flags FlagSet) {
+func RenderFSM(input string, flags Set[CmdFlag]) {
 	reducers := getReducersFromFlags(flags)
 	graph := NewMyRegex(input, reducers...).DebugFSM()
 	html := buildFsmHtml(graph)
@@ -45,7 +45,7 @@ func RenderFSM(input string, flags FlagSet) {
 // RenderRunner will render every step of the runner until it fails or succeeds. The template will then take care
 // of hiding all but one of the steps to give the illusion of stepping through the input characters. It will
 // then output the result to the browser.
-func RenderRunner(regex, input string, flags FlagSet) {
+func RenderRunner(regex, input string, flags Set[CmdFlag]) {
 	data := buildRunnerTemplateData(regex, input, getReducersFromFlags(flags))
 	htmlRunner := buildRunnerHTML(data)
 	outputToBrowser(htmlRunner)
@@ -53,7 +53,7 @@ func RenderRunner(regex, input string, flags FlagSet) {
 
 // OutputRunnerToFile will render every step of the runner, the same as RenderRunner, and then write the html to
 // a file.
-func OutputRunnerToFile(regex, input, filePath string, flags FlagSet) {
+func OutputRunnerToFile(regex, input, filePath string, flags Set[CmdFlag]) {
 	data := buildRunnerTemplateData(regex, input, getReducersFromFlags(flags))
 	htmlRunner := buildRunnerHTML(data)
 	outputToFile(htmlRunner, filePath)
@@ -86,7 +86,7 @@ func buildRunnerTemplateData(regex string, input string, reducers []Reducer) Tem
 	return data
 }
 
-func getReducersFromFlags(flags FlagSet) []Reducer {
+func getReducersFromFlags(flags Set[CmdFlag]) []Reducer {
 	var reducers []Reducer
 
 	for flag := range flags {
@@ -119,14 +119,17 @@ func outputToFile(html, path string) {
 	}
 }
 
-func parseArgumentsAndFlags(args []string) ([]string, FlagSet) {
-	flagSet := make(FlagSet)
+func parseArgumentsAndFlags(args []string) ([]string, Set[CmdFlag]) {
+	flagSet := NewSet[CmdFlag]()
 	var arguments = []string{}
 	for _, arg := range args {
 		switch arg {
 		case "--reduce-epsilons":
-			flagSet[reduceEpsilon] = true
+			flagSet.add(reduceEpsilon)
 		default:
+			if strings.HasPrefix(arg, "--") {
+				panic(fmt.Sprintf("flag '%s' not recognized", arg))
+			}
 			arguments = append(arguments, arg)
 		}
 	}
