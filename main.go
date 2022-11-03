@@ -36,11 +36,7 @@ func Main(args []string) {
 
 // RenderFSM will render just the finite state machine, and output the result to the browser
 func RenderFSM(input string, flags FlagSet) {
-	reducers := []Reducer{}
-	if flags[reduceEpsilon] {
-		reducers = append(reducers, &epsilonReducer{})
-	}
-
+	reducers := getReducersFromFlags(flags)
 	graph := NewMyRegex(input, reducers...).DebugFSM()
 	html := buildFsmHtml(graph)
 	outputToBrowser(html)
@@ -50,8 +46,7 @@ func RenderFSM(input string, flags FlagSet) {
 // of hiding all but one of the steps to give the illusion of stepping through the input characters. It will
 // then output the result to the browser.
 func RenderRunner(regex, input string, flags FlagSet) {
-	reducers := getReducersFromFlags(flags)
-	data := buildRunnerTemplateData(regex, input, reducers)
+	data := buildRunnerTemplateData(regex, input, getReducersFromFlags(flags))
 	htmlRunner := buildRunnerHTML(data)
 	outputToBrowser(htmlRunner)
 }
