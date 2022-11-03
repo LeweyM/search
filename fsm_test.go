@@ -6,54 +6,6 @@ import (
 	"testing"
 )
 
-func TestCompiledFSM(t *testing.T) {
-	tokens := lex("abc")
-	parser := NewParser(tokens)
-	ast := parser.Parse()
-	startState, _ := ast.compile()
-
-	type test struct {
-		name           string
-		input          string
-		expectedStatus Status
-	}
-
-	tests := []test{
-		{"empty string", "", Normal},
-		{"non matching string", "xxx", Fail},
-		{"matching string", "abc", Success},
-		{"partial matching string", "ab", Normal},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			testRunner := NewRunner(startState)
-
-			for _, character := range tt.input {
-				testRunner.Next(character)
-			}
-
-			result := testRunner.GetStatus()
-			if tt.expectedStatus != result {
-				t.Fatalf("Expected FSM to have final state of '%v', got '%v'", tt.expectedStatus, result)
-			}
-
-			goRegex := regexp.MustCompile("abc")
-			match := goRegex.Match([]byte(tt.input))
-
-			if tt.expectedStatus == Success {
-				if !match {
-					t.Fatalf("Expected FSM to have same result as GORegex pkg. Expected '%v', got '%v'", tt.expectedStatus, match)
-				}
-			} else {
-				if match {
-					t.Fatalf("Expected FSM to have same result as GORegex pkg. Expected '%v', got '%v'", tt.expectedStatus, match)
-				}
-			}
-		})
-	}
-}
-
 func TestFSMAgainstGoRegexPkg(t *testing.T) {
 	type test struct {
 		name  string
@@ -84,23 +36,7 @@ func TestFSMAgainstGoRegexPkg(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			myRegex := NewMyRegex(tt.regex)
-			result := myRegex.MatchString(tt.input)
-
-			goRegexMatch := regexp.MustCompile(tt.regex).MatchString(tt.input)
-			t.Logf("Compiled state machine:\n%v\n", myRegex.DebugFSM())
-
-			if result != goRegexMatch {
-				t.Fatalf(
-					"Mismatch - \nRegex: '%s' (as bytes: %x), \nInput: '%s' (as bytes: %x) \n-> \nGo Regex Pkg: '%t', \nOur regex result: '%v'",
-					tt.regex,
-					[]byte(tt.regex),
-					tt.input,
-					[]byte(tt.input),
-					goRegexMatch,
-					result,
-				)
-			}
+			compareWithGoStdLib(t, NewMyRegex(tt.regex), tt.regex, tt.input)
 		})
 	}
 }
@@ -116,23 +52,30 @@ func FuzzFSM(f *testing.F) {
 			t.Skip()
 		}
 
-		compiledGoRegex, err := regexp.Compile(regex)
+		_, err := regexp.Compile(regex)
 		if err != nil {
 			t.Skip()
 		}
 
-		result := NewMyRegex(regex).MatchString(input)
-		goRegexMatch := compiledGoRegex.MatchString(input)
-
-		if result != goRegexMatch {
-			t.Fatalf(
-				"Mismatch - \nRegex: '%s' (as bytes: %x), \nInput: '%s' (as bytes: %x) \n-> \nGo Regex Pkg: '%t', \nOur regex result: '%v'",
-				regex,
-				[]byte(regex),
-				input,
-				[]byte(input),
-				goRegexMatch,
-				result)
-		}
+		compareWithGoStdLib(t, NewMyRegex(regex), regex, input)
 	})
+}
+
+func compareWithGoStdLib(t *testing.T, myRegex *myRegex, regex, input string) {
+	t.Helper()
+
+	result := myRegex.MatchString(input)
+	goRegexMatch := regexp.MustCompile(regex).MatchString(input)
+
+	if result != goRegexMatch {
+		t.Fatalf(
+			"Mismatch - \nRegex: '%s' (as bytes: %x), \nInput: '%s' (as bytes: %x) \n-> \nGo Regex Pkg: '%t', \nOur regex result: '%v'",
+			regex,
+			[]byte(regex),
+			input,
+			[]byte(input),
+			goRegexMatch,
+			result,
+		)
+	}
 }
