@@ -13,8 +13,8 @@ func NewMyRegex(re string) *myRegex {
 }
 
 func (m *myRegex) MatchString(input string) bool {
-	testRunner := NewRunner(m.fsm)
-	return match(testRunner, []rune(input))
+	runner := NewRunner(m.fsm)
+	return match(runner, []rune(input))
 }
 
 func match(runner *runner, input []rune) bool {
