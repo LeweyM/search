@@ -11,32 +11,36 @@ func (e *epsilonReducer) reduce(s *State) {
 }
 
 func (e *epsilonReducer) reduceEpsilons(s *State, visited *Set[*State]) {
-	// if this state has already been reduced, return.
+	// 0. if this state has already been reduced, return to avoid infinite recursive loops.
 	if visited.has(s) {
 		return
 	}
 	visited.add(s)
 
-	// collect all the transitions of the current states clojure.
+	// 1. Collect the states of the epsilon closure.
 	closure := s.getEpsilonClosure()
+
+	// 2. Collect the transitions of all states within the closure.
 	closureTransitions := collectTransitions(closure)
 
-	// remove the current states transitions and epsilons.
-	s.transitions, s.epsilons = nil, nil
+	// 3. Remove any epsilon transitions from the state.
+	s.epsilons = nil
 
-	// replace the current states transitions with all the transitions of the closure.
+	// 4. Replace the transitions of the state with the closure transitions.
+	s.transitions = nil
 	for _, t := range closureTransitions {
 		s.addTransition(t.to, t.predicate, t.debugSymbol)
 	}
 
-	// if any of the states in the closure was a success state, make the current state a success state.
+	// 5.  If any state in the closure is a success state, make the state a success state.
 	for state := range closure {
 		if state.isSuccessState() {
 			s.SetSuccess()
+			break
 		}
 	}
 
-	// recur on the states connected by the new transitions.
+	// 6. Recur on connected states.
 	for _, transition := range s.transitions {
 		e.reduceEpsilons(transition.to, visited)
 	}
