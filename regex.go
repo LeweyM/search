@@ -18,8 +18,8 @@ func NewMyRegex(re string) *myRegex {
 }
 
 func (m *myRegex) MatchString(input string) bool {
-	testRunner := NewRunner(m.fsm)
-	return match(testRunner, []rune(input), nil, 0)
+	runner := NewRunner(m.fsm)
+	return match(runner, []rune(input), nil, 0)
 }
 
 func (m *myRegex) DebugFSM() string {
@@ -28,10 +28,10 @@ func (m *myRegex) DebugFSM() string {
 }
 
 func (m *myRegex) DebugMatch(input string) []debugStep {
-	testRunner := NewRunner(m.fsm)
+	runner := NewRunner(m.fsm)
 	debugStepChan := make(chan debugStep)
 	go func() {
-		match(testRunner, []rune(input), debugStepChan, 0)
+		match(runner, []rune(input), debugStepChan, 0)
 		close(debugStepChan)
 	}()
 	var debugSteps []debugStep
