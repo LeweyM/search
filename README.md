@@ -20,4 +20,4 @@
 - [x] smart overwriting instead of wiping whole screen
 - [x] color responses
 - [x] scrollable results
-- [ ] separate input from screen
+- [ ] separate input from screenThu May  8 14:37:37 UTC 2025
