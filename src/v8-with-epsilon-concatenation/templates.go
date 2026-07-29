@@ -26,7 +26,7 @@ const fsmTemplate = `
 const runnerTemplate = `
 <link href="https://fonts.googleapis.com/css?family=Poppins:300,400" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/mermaid@9.1.7/dist/mermaid.min.js"></script>
-<script>mermaid.initialize({startOnLoad:true});</script>
+<script>mermaid.initialize({startOnLoad:false});</script>
 <style>
 :root { color: #666; font-family: "Poppins", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; font-size: 16px; font-weight: 300; }
 * { box-sizing: border-box; }
@@ -46,7 +46,7 @@ button:disabled { background: #f5f7f9; border-color: #d8e9fc; color: #aaa; curso
 .mermaid svg { height: auto; max-width: 100% !important; }
 @media (max-width: 480px) { body { padding-inline: 4px; } h1 { font-size: 1.15rem; } .hint { font-size: .75rem; } }
 </style>
-<body onload="prev()">
+<body onload="initialize()">
 
 <h1>Regex: ({{ .Regex }})</h1>
 
@@ -61,7 +61,7 @@ button:disabled { background: #f5f7f9; border-color: #d8e9fc; color: #aaa; curso
 </div>
 
 {{ range $i, $s := .Steps }}
-<div class="graph" {{ if ne $i 0 }} style="display:none;visibility:hidden;" {{ else }} style="visibility:visible" {{ end }}>
+<div class="graph" {{ if ne $i 0 }} style="visibility:hidden;" {{ else }} style="visibility:visible" {{ end }}>
 	<p class="input">
 		<span class="input-processed">{{ index .InputSplit 0 }}</span><span class="input-current">{{ index .InputSplit 1 }}</span><span>{{ index .InputSplit 2 }}</span>
 	</p>
@@ -72,7 +72,22 @@ button:disabled { background: #f5f7f9; border-color: #d8e9fc; color: #aaa; curso
 {{ end }}
 
 <script type="text/javascript">
-let i = 1
+let i = 0
+
+function initialize() {
+	const diagrams = document.querySelectorAll('.mermaid')
+	let rendered = 0
+	mermaid.init(undefined, diagrams, () => {
+		rendered++
+		if (rendered !== diagrams.length) return
+		const c = document.getElementsByClassName('graph')
+		for (let j = 0; j < c.length; j++) {
+			c[j].style.display = i === j ? 'block' : 'none'
+			c[j].style.visibility = i === j ? 'visible' : 'hidden'
+		}
+		updateButtons(c.length)
+	})
+}
 
 function next() {
   const c = document.getElementsByClassName('graph') 
