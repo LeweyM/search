@@ -31,14 +31,14 @@ func TestFSMAgainstGoRegexPkg(t *testing.T) {
 		// wildcard
 		{"wildcard regex matching", "ab.", "abc"},
 		{"wildcard regex not matching", "ab.", "ab"},
-		{"wildcards matching newlines", "..0", "0\n0"},
+		{"wildcards do not match newlines", "..0", "0\n0"},
 
 		// branch
 		{"branch matching 1st branch", "ab|cd", "ab"},
 		{"branch matching 2nd branch", "ab|cd", "cd"},
 		{"branch not matching", "ab|cd", "ac"},
-		{"branch with shared characters", "dog|dot", "dog"}, // will work
-		{"branch with shared characters", "dog|dot", "dot"}, // will not work
+		{"branch with shared characters", "dog|dot", "dog"},
+		{"branch with shared characters", "dog|dot", "dot"},
 	}
 
 	for _, tt := range tests {
