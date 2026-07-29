@@ -50,6 +50,20 @@ func TestFSMAgainstGoRegexPkg(t *testing.T) {
 	}
 }
 
+func TestRunnerAdvancesChainedEpsilons(t *testing.T) {
+	start, middle, end, success := &State{}, &State{}, &State{}, &State{}
+	start.addEpsilon(middle)
+	middle.addEpsilon(end)
+	end.addTransition(success, Predicate{allowedChars: "a"}, "a")
+
+	runner := NewRunner(start)
+	runner.Next('a')
+
+	if status := runner.GetStatus(); status != Success {
+		t.Fatalf("expected chained epsilon transitions to reach success, got %s", status)
+	}
+}
+
 func FuzzFSM(f *testing.F) {
 	f.Add("ab|cd|ef", "abc")
 	f.Add("abc", "abc")
