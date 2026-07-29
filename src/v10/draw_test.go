@@ -134,3 +134,11 @@ style 3 fill:#00ab41;`,
 		})
 	}
 }
+
+func TestThreeSplitStringUsesRuneIndex(t *testing.T) {
+	expected := []string{"é", "c", "lair"}
+	actual := threeSplitString("éclair", 1)
+	if !reflect.DeepEqual(expected, actual) {
+		t.Fatalf("expected %v, got %v", expected, actual)
+	}
+}

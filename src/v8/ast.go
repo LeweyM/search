@@ -28,7 +28,7 @@ type Branch struct {
 }
 
 func (b *Branch) Append(node Node) {
-	for i := len(b.ChildNodes) - 1; i > 0; i-- {
+	for i := len(b.ChildNodes) - 1; i >= 0; i-- {
 		switch n := b.ChildNodes[i].(type) {
 		case CompositeNode:
 			n.Append(node)

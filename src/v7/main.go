@@ -120,14 +120,15 @@ func outputToBrowser(html string) {
 	}
 }
 
-// threeSplitString divides a string into three pieces on a given index
+// threeSplitString divides a string into three pieces at a rune index.
 func threeSplitString(s string, i int) []string {
+	runes := []rune(s)
 	var left, middle, right string
 
-	left = s[:i]
-	if i < len(s) {
-		middle = string(s[i])
-		right = s[i+1:]
+	left = string(runes[:i])
+	if i < len(runes) {
+		middle = string(runes[i])
+		right = string(runes[i+1:])
 	}
 
 	return []string{left, middle, right}

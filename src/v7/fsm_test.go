@@ -31,7 +31,7 @@ func TestFSMAgainstGoRegexPkg(t *testing.T) {
 		// wildcard
 		{"wildcard regex matching", "ab.", "abc"},
 		{"wildcard regex not matching", "ab.", "ab"},
-		{"wildcards matching newlines", "..0", "0\n0"},
+		{"wildcards do not match newlines", "..0", "0\n0"},
 
 		// branch
 		{"branch matching 1st branch", "ab|cd", "ab"},
