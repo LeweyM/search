@@ -69,7 +69,7 @@ func (r *runner) activateConnectedEpsilons(state *State) {
 	for _, epsilon := range state.epsilons {
 		if !r.activeStates.has(epsilon) {
 			r.activeStates.add(epsilon)
-			r.activateConnectedEpsilons(state)
+			r.activateConnectedEpsilons(epsilon)
 		}
 	}
 }
