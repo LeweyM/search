@@ -42,9 +42,10 @@ button:disabled { background: #f5f7f9; border-color: #d8e9fc; color: #aaa; curso
 .input { color: #555; font-size: clamp(2rem, 9vw, 3.6rem); line-height: 1.15; margin: 0 0 8px; overflow-wrap: anywhere; }
 .input-processed { color: #d95050; }
 .input-current { text-decoration-color: #d95050; text-decoration-line: underline; text-decoration-thickness: 3px; text-underline-offset: 4px; }
-.mermaid { display: flex; justify-content: center; width: 100%; }
+.mermaid { display: flex; justify-content: center; overflow-x: auto; width: 100%; }
 .mermaid svg { height: auto; max-width: 100% !important; }
-@media (max-width: 480px) { body { padding-inline: 4px; } h1 { font-size: 1.15rem; } .hint { font-size: .75rem; } }
+.scroll-hint { display: none; }
+@media (max-width: 480px) { body { padding-inline: 4px; } h1 { font-size: 1.15rem; } .hint { font-size: .75rem; } .mermaid { justify-content: flex-start; } .scroll-hint { color: #888; display: block; font-size: .75rem; margin: 4px 0 0; } }
 </style>
 <body onload="initialize()">
 
@@ -68,6 +69,7 @@ button:disabled { background: #f5f7f9; border-color: #d8e9fc; color: #aaa; curso
 	<div class="mermaid">
 		{{ .Graph }}
 	</div>
+	<p class="scroll-hint">Swipe sideways to explore the diagram.</p>
 </div>
 {{ end }}
 
@@ -80,6 +82,12 @@ function initialize() {
 	mermaid.init(undefined, diagrams, () => {
 		rendered++
 		if (rendered !== diagrams.length) return
+		if (window.innerWidth <= 480) {
+			diagrams.forEach(diagram => {
+				const svg = diagram.querySelector('svg')
+				svg.style.minWidth = Math.min(svg.viewBox.baseVal.width, 820) + 'px'
+			})
+		}
 		const c = document.getElementsByClassName('graph')
 		for (let j = 0; j < c.length; j++) {
 			c[j].style.display = i === j ? 'block' : 'none'
